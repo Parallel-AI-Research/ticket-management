@@ -1,0 +1,89 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #fff;
+  --color-secondary: #f1f3f8;
+  --color-secondary-foreground: #333c54;
+  --color-muted: #f3f5f9;
+  --color-muted-foreground: #70798c;
+  --color-accent: #eef0ff;
+  --color-accent-foreground: #494cc2;
+  --color-destructive: #c13b48;
+  --color-border: #e6e9ef;
+  --color-input: #dde2eb;
+  --color-ring: #6666d7;
+  --radius-sm: 0.3rem;
+  --radius-md: 0.45rem;
+  --radius-lg: 0.6rem;
+  --radius-xl: 0.8rem;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+}
+:root {
+  --background: #f8f9fc;
+  --foreground: #212a3e;
+  --card: #fff;
+  --primary: #5658cd;
+}
+* {
+  border-color: var(--color-border);
+}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button:not(:disabled),
+select {
+  cursor: pointer;
+}
+::selection {
+  background: #dcdeff;
+}
+.ticket-row:hover {
+  background: #fafaff;
+}
+.ticket-row:focus-within {
+  background: #f2f3ff;
+}
+.sidebar-grid {
+  background-image:
+    linear-gradient(#ffffff05 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
