@@ -1,0 +1,23 @@
+# Dependencies, build artifacts, and local research data
+node_modules/
+.next/
+.local/
+out/
+build/
+coverage/
+test-results/
+playwright-report/
+
+# Generated files
+drizzle/meta/
+next-env.d.ts
+package-lock.json
+*.tsbuildinfo
+
+# Environment files and local credentials
+.env*
+!.env.example
+
+# Next.js maintains these instruction files
+AGENTS.md
+CLAUDE.md
