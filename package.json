@@ -16,6 +16,7 @@
     "db:migrate": "node --import tsx scripts/migrate.ts",
     "dev:fixture": "LOCAL_FIXTURE_MODE=true next dev --hostname 127.0.0.1",
     "test:http": "node scripts/http-smoke.mjs",
+    "test:live": "node scripts/live-smoke.mjs",
     "data:prune": "node --import tsx scripts/prune.ts"
   },
   "dependencies": {
