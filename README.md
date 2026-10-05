@@ -76,13 +76,13 @@ Do not replay already-applied SQL by hand: role and policy creation are tracked 
 
 ### Auth configuration and config push
 
-`supabase/config.toml` records the intended local settings; editing it does not update the cloud project. Set global signup and anonymous sign-in **off**, keep the email/password provider **on**, require a minimum password length of **12**, and enable email confirmation, secure password changes, and confirmation on both addresses for email changes. Existing accounts should be manually confirmed when provisioned. [Auth configuration reference](https://supabase.com/docs/guides/local-development/cli/config)
+`supabase/config.toml` records the intended project settings; editing it does not update the cloud project. Set global signup and anonymous sign-in **off**, keep the email/password provider **on**, require a minimum password length of **12**, and enable email confirmation, secure password changes, and confirmation on both addresses for email changes. Existing accounts should be manually confirmed when provisioned. [Auth configuration reference](https://supabase.com/docs/guides/local-development/cli/config)
 
 The distinction between signup and provider availability matters: CLI `auth.enable_signup=false` disables public account creation, while `auth.email.enable_signup=true` keeps the email provider available. In the installed CLI, the latter maps to the hosted `external_email_enabled` setting. Do not turn off the email provider to restrict signup.
 
-The local site URL is `http://127.0.0.1:3000`; its exact redirect allowlist also permits `http://localhost:3000`. Before a hosted deployment, use the real HTTPS site URL and only the exact redirect destinations that deployment needs. The current app uses password login without a redirect-based email flow.
+The Supabase site URL and committed `auth.site_url` are the canonical production origin, `https://ticket-management-indol-two.vercel.app`. The exact redirect allowlist includes that origin plus `http://127.0.0.1:3000` and `http://localhost:3000` for development. Local Next.js still uses `APP_ORIGIN=http://127.0.0.1:3000`; the hosted app uses the production origin. The current app uses password login without a redirect-based email flow.
 
-Review the hosted settings and the full intended change before using `supabase config push --project-ref rdzddsnuiwhfuydyhfhb`. It writes remote configuration, not just Auth settings; local URLs and unrelated generated defaults need review before pushing to production. `db push --dry-run` previews migrations, not config changes. Keep `research` and `auth` out of the Data API's exposed schemas and extra search path; the local list contains only `public` and `graphql_public`, with automatic exposure of new public objects disabled. Config push does not replace migrations, runtime-role password provisioning, or hosted verification. [Config push reference](https://supabase.com/docs/reference/cli/supabase-config-push)
+Review the hosted settings and the full intended change before using `supabase config push --project-ref rdzddsnuiwhfuydyhfhb`. It writes remote configuration, not just Auth settings; site URLs, redirect destinations, and unrelated generated defaults need review before pushing to production. `db push --dry-run` previews migrations, not config changes. Keep `research` and `auth` out of the Data API's exposed schemas and extra search path; the configured list contains only `public` and `graphql_public`, with automatic exposure of new public objects disabled. Config push does not replace migrations, runtime-role password provisioning, or hosted verification. [Config push reference](https://supabase.com/docs/reference/cli/supabase-config-push)
 
 ### Authenticated live smoke check
 
@@ -96,7 +96,27 @@ The script refuses missing configuration, fixture mode, and remote HTTP targets 
 
 ## Hosting
 
-Deploy this standalone repository with the hosting service's root directory set to **`.`**; there is no nested application directory in the repository. Supply `NEXT_PUBLIC_SUPABASE_*` before building, plus the runtime `research_app` connection and application settings. Keep migration/admin credentials out of the hosted app. Set `APP_ORIGIN` to the hosted HTTPS origin and never enable fixture mode. The production build needs no live database, but live requests do. Choose a hosting region near US East (N. Virginia). Provision research accounts and complete the authenticated smoke and browser checks before sharing the URL.
+The existing Git-linked Vercel project is **`origho-precious-projects/ticket-management`**. Its canonical production address is [ticket-management-indol-two.vercel.app](https://ticket-management-indol-two.vercel.app).
+
+| Setting                   | Value                                            |
+| ------------------------- | ------------------------------------------------ |
+| Repository root directory | `.`                                              |
+| Framework                 | Next.js                                          |
+| Node.js version           | `24.x`                                           |
+| Function region           | `iad1` (US East, near the Supabase database)     |
+| Production `APP_ORIGIN`   | `https://ticket-management-indol-two.vercel.app` |
+
+Use the existing project for subsequent deployments. This standalone repository has no nested application directory. Production needs `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, the restricted `research_app` `DATABASE_URL`, `APP_ORIGIN`, `GATE_MODE`, and the chosen operator-access settings. Add `DATABASE_SSL_CA` only if the database endpoint requires it. Supply the `NEXT_PUBLIC_SUPABASE_*` values before building and redeploy after changing deployment environment variables. Never enable fixture mode on Vercel.
+
+Keep migration/admin credentials, Supabase administrative API keys, and `TEST_USER_EMAIL`/`TEST_USER_PASSWORD` out of the hosted application. Run `npm run test:live` from the operator's machine with `TEST_BASE_URL` set to the canonical production origin; the test account credentials stay local. The production build needs no live database, but live requests do.
+
+Verification so far: all 18 implementation tests, the production build, and authenticated HTTP smoke checks against both the local app and the canonical Vercel URL passed. The hosted check verified real login, registration blocking before acceptance, persisted changes, Meridian denial, fresh-run isolation, logout, and rejection of saved authentication cookies after logout. The hosted login page also rendered with its email, password, and sign-in controls. Authenticated browser interactions have not yet been verified; these remain separate checks before browser trials. None of these results establishes uncoached agent success.
+
+### Sharing access
+
+The repository is public. Give each tester a provisioned research account and share its credentials privately, outside the repository, issues, or public messages. Keep database credentials and operator tokens separate from participant login details.
+
+The project owner's local account record is stored in ignored `.local/research-accounts.json`. It is local-only: do not commit it, upload it to Vercel, or distribute the complete file to testers. `.env.local` and the rest of `.local/` must also remain untracked.
 
 ## Endpoints
 
