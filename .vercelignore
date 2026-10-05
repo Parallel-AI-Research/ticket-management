@@ -1,0 +1,26 @@
+# Credentials and local state never belong in deployment uploads.
+.env*
+!.env.example
+.local/
+.git/
+.vercel/
+supabase/.temp/
+supabase/.branches/
+
+# Vercel installs dependencies and builds the app from source.
+node_modules/
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Tests, reports, and local documentation artifacts are not runtime assets.
+tests/
+test-results/
+playwright-report/
+coverage/
+docs/
+scripts/http-smoke.mjs
+scripts/live-smoke.mjs
+.DS_Store
