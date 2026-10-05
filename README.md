@@ -10,7 +10,7 @@ A Next.js application for the agent-registration research prototype. Supabase ho
 - Drizzle ORM + Zod
 - Node test runner with embedded PostgreSQL (PGlite) for implementation tests
 
-Use Node 24 (`nvm use`). The generated components live in `src/components/ui`.
+This is a standalone repository: `package.json`, `src`, `scripts`, and `supabase` live at its root. Run commands from that root and use Node 24 (`nvm use`). The generated components live in `src/components/ui`.
 
 ## Local interface and implementation checks
 
@@ -39,22 +39,64 @@ ESLint uses the Next.js Core Web Vitals and TypeScript rules. Prettier handles f
 
 ## Connect Supabase
 
-1. Create a dedicated Supabase project for this experiment. Keep development and shared research environments separate.
-2. Copy `.env.example` to `.env.local`.
-3. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the project Connect dialog.
-4. Set `DATABASE_URL` to the **transaction pooler** connection string. The server uses Postgres.js with `max: 1`, `prepare: false`, and certificate-verified TLS. Keep this credential server-only. If the endpoint requires a custom CA, set `DATABASE_SSL_CA` to the project's root certificate PEM from Supabase (literal `\n` separators are supported). Do not disable certificate verification to work around connection failures; `DATABASE_SSL=disable` is rejected in production.
-5. Optionally set `MIGRATION_DATABASE_URL` to the direct/session connection for schema changes. The server connection must be able to read `auth.sessions` for immediate logout/revocation checks. The project's server-side `postgres` connection has the required access; do not expose it to the browser.
-6. Set `APP_ORIGIN` to the exact app URL. Set `GATE_MODE=selective` for the primary configuration, or `strict` for enforcement testing. Freeze the mode before measured runs; it is copied into each newly created run.
-7. Run `npm run db:migrate`. This applies the idempotent initial schema under **research**, leaving unrelated public tables untouched. Subsequent schema evolution must use versioned migrations; rerunning this bootstrap does not alter existing column definitions.
-8. In [Supabase Auth configuration](https://supabase.com/docs/guides/auth/general-configuration), disable **Allow new users to sign up** and anonymous sign-ins. The app accepts authenticated project users, so removing the signup UI alone does not restrict access. Provision confirmed email/password research accounts through the Supabase dashboard; this app has no invitation or password-setup flow. Login is account authentication and is separate from the invisible agent declaration exchange.
-9. Set `OPERATOR_USER_IDS` to authorized operator Supabase UUIDs, or configure a random `OPERATOR_TOKEN` of at least 32 characters for operator CLI access.
-10. Run `npm run dev`. Stop the fixture server first so the two servers do not compete for port 3000.
+Use **ticket-management** in the **Parallel Research** organization, project reference `rdzddsnuiwhfuydyhfhb`, region **US East (N. Virginia), `us-east-1`**. [Open the project](https://supabase.com/dashboard/project/rdzddsnuiwhfuydyhfhb). Use this reference explicitly when linking the CLI; the earlier Frankfurt project is not the application target. Keep future development and shared research environments separate.
 
-The cloud project and real Supabase sign-in must be verified after credentials are configured. No cloud project has been created or connected by this repository alone.
+1. Copy `.env.example` to the ignored `.env.local`. Get `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from this project's Connect dialog. Project creation and committed configuration do not establish that the application connection works.
+2. Apply the versioned migrations described below using an administrative database connection. They create the private `research` schema, restricted `research_app` login role, and session lookup view. Provision that role's random password separately through the operator's secure workflow; never put passwords in migrations, command arguments, or source control.
+3. Set runtime `DATABASE_URL` to the project's **transaction pooler** connection using the `research_app` role and its own password. Use pooler username `research_app.rdzddsnuiwhfuydyhfhb`, and copy the host/port/database from this project's Connect dialog. URL-encode password characters when constructing the connection string. Keep administrative credentials separate: `MIGRATION_DATABASE_URL`, if used by an operator tool, is not the runtime connection and should not be deployed to the application.
+4. Keep certificate-verified TLS enabled. The server uses Postgres.js with `max: 1` and `prepare: false`. If the endpoint requires a custom CA, set `DATABASE_SSL_CA` to the project's root certificate PEM from Supabase (literal `\n` separators are supported). Do not disable certificate verification to work around connection failures; `DATABASE_SSL=disable` is rejected in production.
+5. Apply and verify the Auth settings below before provisioning participants. Create confirmed email/password research accounts with passwords of at least twelve characters through the Supabase dashboard or an authorized administrative workflow. The app has no signup, invitation, email-confirmation callback, or password-setup flow. Account authentication remains separate from the invisible agent declaration exchange.
+6. Set `APP_ORIGIN` to the exact app origin, including its scheme and port. For `npm run dev`, use `http://127.0.0.1:3000`. Set `GATE_MODE=selective` for the primary configuration, or `strict` for enforcement testing. Freeze the mode before measured runs; it is copied into each newly created run.
+7. Set `OPERATOR_USER_IDS` to authorized operator Supabase UUIDs, or configure a random `OPERATOR_TOKEN` of at least 32 characters for operator CLI access.
+8. Stop the fixture server, ensure `LOCAL_FIXTURE_MODE` is unset, and run `npm run dev`. Run the authenticated smoke check below. A successful build or a configured health response alone does not verify login, database permissions, or session revocation.
+
+### Database migrations and restricted runtime role
+
+The authoritative hosted migrations, in order, are:
+
+- `supabase/migrations/20261005151445_initialize_research_schema.sql`
+- `supabase/migrations/20261005151506_add_research_server_role.sql`
+- `supabase/migrations/20261005152658_add_auth_session_lookup_view.sql`
+
+The role migration grants `research_app` the required research-table operations, event-sequence usage, and column-level `SELECT` on `auth.sessions.id` and `auth.sessions.user_id`. It has no role/schema administration, RLS bypass, or access to Auth tokens, emails, and passwords. Its research policies trust the Next.js server to enforce participant and run boundaries; this credential must stay server-only.
+
+The runtime role has `USAGE` on `research`, but not on Supabase's managed `auth` schema. Revocation checks therefore query `research.auth_session_lookup`, a private two-column view created with `security_invoker=true`. The view retains the caller's underlying column grants and RLS checks; it does not elevate privileges. Only `research_app` is granted `SELECT`, with `PUBLIC`, `anon`, and `authenticated` access revoked. Both the role and view migrations are required before the application can check Auth sessions.
+
+For a new environment, authenticate the CLI and inspect migration history before applying pending migrations. Check the installed CLI's `--help` first. Supply administrative credentials through the supported secure prompt or environment, never inline in a command.
+
+```sh
+supabase link --project-ref rdzddsnuiwhfuydyhfhb
+supabase migration list --linked
+supabase db push --linked --dry-run
+# After reviewing the pending migrations:
+supabase db push --linked
+```
+
+Do not replay already-applied SQL by hand: role and policy creation are tracked migrations. `npm run db:migrate` is the older schema-only bootstrap; it does not provision the restricted role and is not the hosted migration workflow. Ticket fixtures are created per run, so `supabase/config.toml` disables seeding and does not reference a nonexistent `seed.sql`.
+
+### Auth configuration and config push
+
+`supabase/config.toml` records the intended local settings; editing it does not update the cloud project. Set global signup and anonymous sign-in **off**, keep the email/password provider **on**, require a minimum password length of **12**, and enable email confirmation, secure password changes, and confirmation on both addresses for email changes. Existing accounts should be manually confirmed when provisioned. [Auth configuration reference](https://supabase.com/docs/guides/local-development/cli/config)
+
+The distinction between signup and provider availability matters: CLI `auth.enable_signup=false` disables public account creation, while `auth.email.enable_signup=true` keeps the email provider available. In the installed CLI, the latter maps to the hosted `external_email_enabled` setting. Do not turn off the email provider to restrict signup.
+
+The local site URL is `http://127.0.0.1:3000`; its exact redirect allowlist also permits `http://localhost:3000`. Before a hosted deployment, use the real HTTPS site URL and only the exact redirect destinations that deployment needs. The current app uses password login without a redirect-based email flow.
+
+Review the hosted settings and the full intended change before using `supabase config push --project-ref rdzddsnuiwhfuydyhfhb`. It writes remote configuration, not just Auth settings; local URLs and unrelated generated defaults need review before pushing to production. `db push --dry-run` previews migrations, not config changes. Keep `research` and `auth` out of the Data API's exposed schemas and extra search path; the local list contains only `public` and `graphql_public`, with automatic exposure of new public objects disabled. Config push does not replace migrations, runtime-role password provisioning, or hosted verification. [Config push reference](https://supabase.com/docs/reference/cli/supabase-config-push)
+
+### Authenticated live smoke check
+
+After connecting Supabase, put `TEST_BASE_URL`, `TEST_USER_EMAIL`, and `TEST_USER_PASSWORD` in your ignored `.env.local` or supply them through the environment. Use the application's exact origin and a dedicated, confirmed research account. Do not put credentials in command arguments or commit them. This check signs out the test account, which can also revoke its other Supabase login sessions.
+
+```sh
+npm run test:live
+```
+
+The script refuses missing configuration, fixture mode, and remote HTTP targets before sending credentials. It checks real login, registration gating, persisted priority changes, Meridian denial, fresh-run isolation, and access rejection after logout, including replay of saved authentication cookies. Requests have thirty-second timeouts, the main check has a three-minute deadline, and failure triggers a bounded logout attempt. It creates fresh synthetic runs and preserves their audit records. This explicitly registered implementation check is not an uncoached agent trial. Browser-only cookie and interaction behavior still needs a separate browser check.
 
 ## Hosting
 
-Deploy the Next.js project from **this directory**, with the same Supabase environment variables. Supply the `NEXT_PUBLIC_SUPABASE_*` values before building. Set `APP_ORIGIN` to the hosted HTTPS URL and never enable fixture mode. The production build needs no live database, but live requests do. Choose a hosting region near the database. Provision research accounts and complete an authenticated smoke test before sharing the URL.
+Deploy this standalone repository with the hosting service's root directory set to **`.`**; there is no nested application directory in the repository. Supply `NEXT_PUBLIC_SUPABASE_*` before building, plus the runtime `research_app` connection and application settings. Keep migration/admin credentials out of the hosted app. Set `APP_ORIGIN` to the hosted HTTPS origin and never enable fixture mode. The production build needs no live database, but live requests do. Choose a hosting region near US East (N. Virginia). Provision research accounts and complete the authenticated smoke and browser checks before sharing the URL.
 
 ## Endpoints
 
@@ -95,7 +137,7 @@ Allowed source categories are documented in the policy. Unknown, withheld, and n
 - Registration, save permission checks, mutation, and audit events are protected with transactions/session locks. Version checks prevent lost updates.
 - A positive automation signal is sticky. Selective mode can miss automation without a signal; pre-signal or unflagged saves are recorded with acceptance and trigger state. Strict mode requires acceptance for every save.
 - Cookies are HTTP-only and secure in production. Research sessions expire after two hours or 30 minutes of inactivity. Background status polling does not refresh inactivity.
-- Auth session existence is checked server-side, including during nonce redemption, so revoked Supabase sessions cannot keep using acceptance with an old JWT.
+- Auth session existence is checked server-side through the private `research.auth_session_lookup` invoker view, including during nonce redemption, so revoked Supabase sessions cannot keep using acceptance with an old JWT.
 - Logout, principal/login change, new run, expiry, and changed declared pseudonym invalidate acceptance. A changed pseudonym also invalidates old nonces and requires another exchange.
 - Research tables live in a non-public schema, have RLS enabled, and deny PUBLIC/anon/authenticated access. Do not expose this schema through the Supabase Data API. Drizzle's server connection is responsible for authorization; it does not implicitly inherit the user's RLS identity.
 - Event sequence preserves attempt/result ordering. Client events cannot masquerade as server events. Failed payloads are recorded by sanitized reason, never raw content.
