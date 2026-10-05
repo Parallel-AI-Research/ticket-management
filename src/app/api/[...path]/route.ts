@@ -62,7 +62,7 @@ async function assertAuthSession(principalId: string, authSessionId: string) {
   if (isFixtureMode()) return;
   const db = await getDb();
   const rows = await db.execute(
-    sql`select id from auth.sessions where id = ${authSessionId}::uuid and user_id = ${principalId}::uuid limit 1`,
+    sql`select id from research.auth_session_lookup where id = ${authSessionId}::uuid and user_id = ${principalId}::uuid limit 1`,
   );
   if (!rows.length) throw new HttpError(401, "sign_in_required");
 }
