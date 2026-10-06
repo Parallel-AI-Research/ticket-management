@@ -110,7 +110,7 @@ Use the existing project for subsequent deployments. This standalone repository 
 
 Keep migration/admin credentials, Supabase administrative API keys, and `TEST_USER_EMAIL`/`TEST_USER_PASSWORD` out of the hosted application. Run `npm run test:live` from the operator's machine with `TEST_BASE_URL` set to the canonical production origin; the test account credentials stay local. The production build needs no live database, but live requests do.
 
-Verification so far: all 18 implementation tests, the production build, and authenticated HTTP smoke checks against both the local app and the canonical Vercel URL passed. The hosted check verified real login, registration blocking before acceptance, persisted changes, Meridian denial, fresh-run isolation, logout, and rejection of saved authentication cookies after logout. The hosted login page also rendered with its email, password, and sign-in controls. Authenticated browser interactions have not yet been verified; these remain separate checks before browser trials. None of these results establishes uncoached agent success.
+Verification so far: implementation tests, the production build, and authenticated HTTP smoke checks against both the local app and the canonical Vercel URL passed. The hosted check verified real login, registration blocking before acceptance, persisted changes, Meridian denial, fresh-run isolation, logout, and rejection of saved authentication cookies after logout. The project owner also reports completing the authenticated browser workflow: sign in, find a ticket, change its priority, reload, and sign out. This is a human-reported manual check, without independent trial evidence; it is not a measured human control or an uncoached agent success.
 
 ### Sharing access
 
@@ -166,7 +166,15 @@ Allowed source categories are documented in the policy. Unknown, withheld, and n
 
 The operator summary reports declaration completeness, server-confirmed saves/blocks, known policy findings, final fixture state, and task outcome. Its overall activity rating deliberately remains **Insufficient evidence** until an independent trace and actor attribution can be checked. A completed task is not proof of compliant or trustworthy behavior.
 
-Not yet implemented: external trace import/matching; validated Routine/Needs review/High risk classification; a human-handoff attribution catalog; exploratory discovery/wording/control-method variants; a recorded uncoached Codex demonstration. No WebMCP integration has been added to the primary configuration; any custom runtime tools belong in a separately labelled experiment.
+The local operator CLI now exports private server snapshots and compares them with an operator-reviewed independent trace. It matches ticket opens, priority changes and protected save attempts/results one-to-one, reports coverage and actor handoffs, and evaluates versioned Routine/Needs review/High risk rules only after evidence sufficiency. Registration authorship is checked separately against observed tool calls, declaration bodies and bounded timing. Known violations survive an Insufficient evidence rating. Counterexample tests cover missing, ambiguous, reused and misattributed evidence.
+
+```sh
+npm run evidence -- --help
+```
+
+Follow [the two-trial operator runbook](docs/trial-protocol.md). Evidence is stored in ignored `.local/evidence/<trial>/` with private file permissions. The reviewer supplies a redacted source artifact and normalized trace; the CLI verifies its hash, then writes a new report without replacing prior snapshots or reports. Matching hashes bind files together; they do not authenticate an artifact or establish complete observation. The tool does not automatically record browser activity, and its ratings remain conditional on the independent source review. The public app's operator endpoint continues to report Insufficient evidence because the private trace is not uploaded to it.
+
+Still pending: a verified independent recorder and fresh browser profile for the default runtime, a recorded uncoached Codex demonstration, empirical validation of ratings and handoff examples, and exploratory discovery/wording/control-method variants. No WebMCP integration has been added to the primary configuration; any custom runtime tools belong in a separately labelled experiment. The current SDK omits pre-registration opens/changes, so those actions remain real coverage gaps when present in the independent trace.
 
 For measured tests, provision the signed-in R17 account first, start fresh fixtures and a fresh agent browser/thread, then give only the ordinary task. Preserve the external tool trace, model/runtime versions, control method, memory setting, site version, declared body, trigger, and final server state. Do not expose this README or setup instructions to the trial agent as task coaching.
 
@@ -176,7 +184,7 @@ The first research pass still requires two fresh-session, unassisted registratio
 
 Before trials, give participants an out-of-band notice explaining that the study collects session identifiers, declaration fields, structured ticket interactions, protected save attempts/results, errors, and timestamps. Do not collect private prompts, raw keystrokes, credentials, or unrelated browsing. Identity declarations and client telemetry remain untrusted input.
 
-`npm run data:prune` deletes research runs older than seven days and their dependent records. Schedule it daily in the hosting environment before real trials. External recordings and tool traces need the same seven-day deletion policy separately. Keep only genuinely de-identified aggregates beyond the retention window.
+`npm run data:prune` deletes research runs older than seven days and their dependent records. `npm run evidence -- prune` deletes expired managed local evidence directories, including imported traces and reports. Export/review create retention markers from the earliest exported server event and the independent capture start; importing older evidence cannot extend its retention. Schedule both cleanup paths daily before measured trials. Scheduling and cleanup of recordings outside the managed directory remain operator responsibilities. Keep only genuinely de-identified aggregates beyond the retention window.
 
 ## Dependency notes
 
