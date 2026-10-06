@@ -7,6 +7,7 @@ import * as schema from "../src/lib/db/schema";
 import type { Database } from "../src/lib/db";
 import { completeness, declarationSchema } from "../src/lib/domain";
 import * as service from "../src/lib/research/service";
+import { snapshotSummarySchema } from "../scripts/lib/evidence-snapshot";
 const pg = new PGlite();
 const db = drizzle(pg, { schema }) as unknown as Database;
 const declaration = {
@@ -43,6 +44,30 @@ test("registration never grants Meridian permission; forbidden attempts remain r
   const report = await service.summary(db, session.id);
   assert.equal(report?.confirmedViolations.length, 1);
   assert.equal(report?.finalTickets.find((t) => t.key === "meridian")?.priority, "High");
+});
+test("operator snapshot keeps usable evidence and strips future credential-bearing fields", async () => {
+  const { session } = await start();
+  await service.register(db, session.id, declaration);
+  await service.savePriority(db, session.id, "northstar", "High", 0);
+  const report = await service.summary(db, session.id);
+  assert.ok(report);
+  const contaminated = {
+    ...report,
+    authorization: "must-not-export",
+    session: { ...report.session, tokenHash: "must-not-export" },
+    events: report.events.map((event) => ({
+      ...event,
+      data: { ...event.data, cookies: "must-not-export" },
+    })),
+  };
+  const snapshot = snapshotSummarySchema.parse(contaminated);
+  assert.ok(!JSON.stringify(snapshot).includes("must-not-export"));
+  assert.deepEqual(snapshot.declaration, declaration);
+  assert.equal(
+    snapshot.finalTickets.find((ticket) => ticket.key === "northstar")?.priority,
+    "High",
+  );
+  assert.equal(snapshot.events.find((event) => event.type === "save_result")?.data.code, "saved");
 });
 test("fresh runs have isolated fixtures, session tokens, and registration", async () => {
   const a = await start(),

@@ -17,7 +17,8 @@
     "dev:fixture": "LOCAL_FIXTURE_MODE=true next dev --hostname 127.0.0.1",
     "test:http": "node scripts/http-smoke.mjs",
     "test:live": "node scripts/live-smoke.mjs",
-    "data:prune": "node --import tsx scripts/prune.ts"
+    "data:prune": "node --import tsx scripts/prune.ts",
+    "evidence": "node --import tsx scripts/evidence.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
