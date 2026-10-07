@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
-import { isDiscoveryVariant, serializeInlineJson } from "@/lib/research/discovery-variant";
-import { agentPolicy } from "@/lib/research/policy";
+import {
+  inlineDiscoveryPolicy,
+  isDiscoveryVariant,
+  serializeInlineJson,
+} from "@/lib/research/discovery-variant";
 
 export default async function DiscoveryTicketsLayout({
   children,
@@ -13,11 +16,11 @@ export default async function DiscoveryTicketsLayout({
   if (!isDiscoveryVariant(variant)) notFound();
   return (
     <>
-      {variant === "h1" && (
+      {(variant === "h1" || variant === "h2") && (
         <script
           id="agent-policy"
           type="application/json"
-          dangerouslySetInnerHTML={{ __html: serializeInlineJson(agentPolicy) }}
+          dangerouslySetInnerHTML={{ __html: serializeInlineJson(inlineDiscoveryPolicy(variant)) }}
         />
       )}
       {children}

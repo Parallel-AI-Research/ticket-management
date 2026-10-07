@@ -64,7 +64,7 @@
   window.AgentGate = gate;
   if (
     location.pathname.startsWith("/tickets") ||
-    /^\/experiments\/(h1|v1|v2)\/tickets(?:\/|$)/.test(location.pathname)
+    /^\/experiments\/(h1|h2|v1|v2)\/tickets(?:\/|$)/.test(location.pathname)
   ) {
     gate.ready = initialize();
     // Keep rejection observable to the UI without an unhandled promise warning.

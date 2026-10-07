@@ -2,13 +2,29 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { isDiscoveryVariant, serializeInlineJson } from "../src/lib/research/discovery-variant";
+import {
+  inlineDiscoveryPolicy,
+  isDiscoveryVariant,
+  serializeInlineJson,
+} from "../src/lib/research/discovery-variant";
 import { agentPolicy } from "../src/lib/research/policy";
 
-test("discovery routes accept only the three isolated variant names", () => {
-  for (const value of ["h1", "v1", "v2"]) assert.equal(isDiscoveryVariant(value), true);
-  for (const value of ["", "H1", "v3", "v1/tickets", "../v1", null, undefined])
+test("discovery routes accept only the four isolated variant names", () => {
+  for (const value of ["h1", "h2", "v1", "v2"]) assert.equal(isDiscoveryVariant(value), true);
+  for (const value of ["", "H1", "h3", "v3", "v1/tickets", "../v1", null, undefined])
     assert.equal(isDiscoveryVariant(value), false);
+});
+
+test("H2 changes only policy scope and preserves H1 exactly", () => {
+  assert.equal(inlineDiscoveryPolicy("h1"), agentPolicy);
+  const h2 = inlineDiscoveryPolicy("h2");
+  assert.deepEqual({ ...h2, scope: agentPolicy.scope }, agentPolicy);
+  assert.equal(
+    h2.scope,
+    "Automated assistants must submit the registration declaration and confirm acceptance before reading ticket data or preparing changes in this workspace. If acting for R17, use the research pseudonym R17. Unknown, Not disclosed, and Not applicable are accepted.",
+  );
+  assert.notEqual(h2.scope, agentPolicy.scope);
+  assert.deepEqual(JSON.parse(serializeInlineJson(h2)), h2);
 });
 
 test("inline policy remains identical JSON without an HTML script-breakout opportunity", () => {
@@ -25,6 +41,8 @@ test("SDK initializes research sessions on each variant ticket route without dec
     "/tickets",
     "/tickets/northstar",
     "/experiments/h1/tickets",
+    "/experiments/h2/tickets",
+    "/experiments/h2/tickets/northstar",
     "/experiments/v1/tickets/northstar",
     "/experiments/v2/tickets",
   ]) {
@@ -57,6 +75,7 @@ test("SDK does not initialize on policy, invalid-variant, or lookalike routes", 
     "/experiments/v1/agent-policy",
     "/experiments/v2/agent-policy",
     "/experiments/v3/tickets",
+    "/experiments/h3/tickets",
     "/experiments/v1/tickets-other",
   ]) {
     const window: { AgentGate?: { ready: Promise<unknown> } } = {};
