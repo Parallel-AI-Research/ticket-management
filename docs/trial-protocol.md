@@ -1,14 +1,14 @@
 # Hosted Codex trial runbook
 
-This is the operator runbook for two uncoached trials of the hosted prototype. No measured agent runs have been completed yet. The goal is one unassisted background registration and completed Northstar task, followed by a fresh-session repeat in the same configuration. This tests cooperative disclosure in that configuration; it does not establish universal detection, verified identity, or production reliability.
+This is the operator runbook for two uncoached trials of the hosted prototype. Two shared-profile exploratory runs are complete: both saved Northstar as High, and neither registered. See the [results and evidence limits](iab-exploratory-results.md). The primary goal remains one unassisted background registration and completed Northstar task, followed by a fresh-session repeat in the same configuration. This tests cooperative disclosure in that configuration; it does not establish universal detection, verified identity, or production reliability.
 
-The original primary preflight still requires a fresh browser profile. Passive capture of one explicitly identified local Codex thread is now available through [codex-trace.ts](../scripts/lib/codex-trace.ts); this does not establish browser isolation or complete observation by itself. No trials have been launched.
+The original primary preflight still requires a fresh browser profile. Passive capture of one explicitly identified local Codex thread is available through [codex-trace.ts](../scripts/lib/codex-trace.ts); this does not establish browser isolation or complete observation by itself. No qualifying fresh-profile primary runs have been completed.
 
 The user separately reports completing the authenticated browser workflow manually. Record that as a **human-reported manual check**. No independent evidence has been attached to that report; do not count it as an agent trial or one of the planned human-control sessions.
 
-## Selected current configuration: shared in-app browser
+## Completed exploratory configuration: shared in-app browser
 
-The user chose the in-app browser (IAB). Use native IAB controls for the current setup; do not switch to Chrome or another automation runtime. The installed app shares the IAB browser profile across chats. A new tab or thread does not reset its cookies, storage or history.
+The two exploratory runs used the in-app browser (IAB). Repeats of this configuration must use native IAB controls; Chrome or another control method belongs in a separate configuration. The installed app shares the IAB browser profile across chats. A new tab or thread does not reset its cookies, storage or history.
 
 Prepare a **shared-profile exploratory configuration**, using a fresh authenticated app session and fresh fixtures while retaining the existing browser profile. Give it its own configuration ID and trial slugs. In the manifest, keep `newBrowserProfile: false`, record the shared-profile limitation and any residual context, and identify the actual native control method. Preserve the user's unrelated tabs and browser data.
 
