@@ -8,6 +8,7 @@ import { getDb, isFixtureMode } from "@/lib/db";
 import { sessions } from "@/lib/db/schema";
 import { eventSchema, registrationSchema, saveSchema } from "@/lib/domain";
 import { agentPolicy } from "@/lib/research/policy";
+import { withAgentRequestLog, type SetRequestLogResult } from "@/lib/research/request-log";
 import * as research from "@/lib/research/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,13 +131,16 @@ async function operator(request: Request) {
     throw new HttpError(403, "operator_access_required");
 }
 type Params = { params: Promise<{ path: string[] }> };
-async function handler(request: NextRequest, params: Params) {
+async function route(request: NextRequest, params: Params, setResult: SetRequestLogResult) {
   try {
     const path = (await params.params).path.join("/"),
       method = request.method;
     if (method === "GET" && path === "health")
       return json({ ok: true, configured: configured(), fixtureMode: isFixtureMode() });
-    if (method === "GET" && path === "agent-policy") return json(agentPolicy);
+    if (method === "GET" && path === "agent-policy") {
+      setResult("policy_served");
+      return json(agentPolicy);
+    }
     if (method === "POST" && path === "auth/login") {
       sameOrigin(request);
       if (!configured()) throw new HttpError(503, "supabase_not_configured");
@@ -267,12 +271,16 @@ async function handler(request: NextRequest, params: Params) {
     }
     if (method === "GET" && path === "agent-registration/status") {
       const c = await context(false, false, false);
-      return json(await research.registrationStatus(c.db, c.session));
+      const status = await research.registrationStatus(c.db, c.session);
+      setResult("registration_status_read");
+      return json(status);
     }
     if (method === "POST" && path === "agent-registration/challenge") {
       sameOrigin(request);
       const c = await context();
-      return json(await research.issueNonce(c.db, c.session));
+      const challenge = await research.issueNonce(c.db, c.session);
+      setResult("challenge_issued");
+      return json(challenge);
     }
     if (method === "POST" && path === "agent-registration") {
       let payload: unknown;
@@ -305,12 +313,14 @@ async function handler(request: NextRequest, params: Params) {
           throw e;
         }
         const result = await research.register(await getDb(), sessionId, declaration, nonce);
+        setResult(result.code);
         return json(result, result.status);
       }
       sameOrigin(request);
       const c = await context();
       if (sessionId && sessionId !== c.session.id) throw new HttpError(403, "session_mismatch");
       const result = await research.register(c.db, c.session.id, declaration);
+      setResult(result.code);
       return json(result, result.status);
     }
     if (method === "POST" && path === "events") {
@@ -332,10 +342,39 @@ async function handler(request: NextRequest, params: Params) {
     }
     throw new HttpError(404, "not_found");
   } catch (error) {
-    if (error instanceof HttpError) return json({ code: error.code }, error.status);
+    if (error instanceof HttpError) {
+      setResult(error.code);
+      return json({ code: error.code }, error.status);
+    }
     // Never return connection strings, raw SQL, auth tokens, or declarations in errors.
     console.error("Request failed", error instanceof Error ? error.name : "UnknownError");
+    setResult("service_unavailable");
     return json({ code: "service_unavailable" }, 503);
   }
 }
-export { handler as GET, handler as POST, handler as PATCH };
+async function handler(request: NextRequest, params: Params) {
+  return withAgentRequestLog(request, (setResult) => {
+    // Preserve Next's previous implicit method responses while observing them.
+    if (request.method === "OPTIONS") {
+      setResult("options");
+      return new Response(null, {
+        status: 204,
+        headers: { Allow: "GET, HEAD, OPTIONS, PATCH, POST" },
+      });
+    }
+    if (request.method === "PUT" || request.method === "DELETE") {
+      setResult("method_not_allowed");
+      return new Response(null, { status: 405 });
+    }
+    return route(request, params, setResult);
+  });
+}
+export {
+  handler as GET,
+  handler as POST,
+  handler as PATCH,
+  handler as PUT,
+  handler as DELETE,
+  handler as HEAD,
+  handler as OPTIONS,
+};
