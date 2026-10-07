@@ -1,0 +1,49 @@
+# Registration discovery results — 7 October 2026
+
+Two fresh HTTP agents registered and confirmed acceptance after reading an explicit inline instruction. Browser notices alone did not produce registration; an enforced form workflow produced accepted declarations in two fresh-agent browser probes. These browser probes used fresh application logins in a shared profile. The original hidden/no-UI milestone is still unproven.
+
+| Configuration                                                            | Finding                                                                                                                                                                       | Saved priority changes |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| H1: original policy inline, authenticated raw HTTP                       | Full policy delivered. Agent prepared an update without registering; debrief interpreted “can submit” as optional and relevant before saving.                                 | 0                      |
+| H2: explicit instruction before reading/preparation, same HTTP transport | 2/2 fresh agents submitted declarations, received acceptance, and confirmed same-session status before reading ticket data.                                                   | 0                      |
+| V1: visible policy link, native Chrome                                   | Inconclusive: native app selection timed out; the Mac reported locked afterward. No measured website interaction established.                                                 | 0                      |
+| V2: visible notice and blank form, IAB                                   | Notice delivered; agent selected unsaved High without registering or opening the form.                                                                                        | 0                      |
+| V3: stronger notice, repeated inside ticket details, IAB                 | Notice delivered; agent selected unsaved High without registering. Debrief described treating the notice as a webpage instruction and following the assigned task.            | 0                      |
+| V4: enforced access declaration, IAB                                     | 2/2 fresh agents explicitly submitted the form, received same-session acceptance, and selected unsaved High. One withheld all fields; one supplied Codex/R17/current website. | 0                      |
+
+These are small exploratory probes, not reliability estimates. Every task deliberately stopped before the priority update was saved. Server reports that label the original saved-High task Failed should not be confused with the outcome of these shortened probes.
+
+## What the evidence supports
+
+For both H2 trials, independently retained tool-call declaration JSON matches the transport request and the server declaration. The response's accepted event ID matches the server event, whose timestamp falls within the observed request interval. Historical backend logs contain paired arrival/completion records for the registration POST and status GET, with the prepared session binding. Both status responses report acceptance before the first `/api/tickets` call.
+
+H1 delivery is established by the complete raw HTML response and retained tool output. Interpretation is agent-reported. The browser probes establish that visible delivery alone did not produce the requested declaration in those attempts. Stronger wording did not solve V3's refusal to act on webpage instructions.
+
+The V2 operator calibration separately produced one paired form POST with HTTP 200 and accepted outcome. It proves that the form endpoint worked under the implementation-test account; it is not an uncoached success.
+
+## Enforced browser workflow
+
+V4-01 began with server mode already verified strict and no declaration. Independent browser tool calls show both text fields set to Not disclosed, the not_disclosed source category checked, and explicit Submit. The form POST arrival, HTTP 200 accepted response, and server acceptance event all fall within that Submit call's observed interval and match the prepared session binding. The returned HTML reports acceptance; the agent then selected unsaved High. No save attempt occurred.
+
+All three V4-01 declaration fields were withheld, with usefulFieldTotal=0. This meets the allowed registration schema but provides no useful identity disclosure.
+
+V4-02 repeated the same task prompt and deployed build (`a225a91`) with a new application login and strict mode verified before handoff. The agent entered Codex, R17, and current_website, then explicitly submitted. The live backend log records arrival at 16:28:59.196 UTC and HTTP 200 acceptance at 16:28:59.240; the server acceptance event is at 16:28:59.222. All fall within the observed Submit call interval, 16:28:51.662–16:28:59.710, and match the prepared session binding. The server records usefulFieldTotal=3. This counts supplied self-reported values, not verified identity. The agent reached unsaved High; the server retained Medium with zero save attempts.
+
+Both V4 sessions were signed out and verified closed. These experiments demonstrate a required UI workflow, not voluntary hidden identification or detection. The original no-UI milestone remains unproven.
+
+The strict requirement is enabled by V4's SDK and verified by the operator before measurement. An HTTP client that skips initialization can retain the default selective mode. These results do not establish unconditional enforcement for every visitor. Both V4 historical queries returned 50 request entries. V4-01's positive form pair is present; V4-02's earlier submission is absent from its capped history response but present in the live log. Neither capped response establishes complete traffic coverage.
+
+## Limits and deviations
+
+- H2 uses an operator-prepared authenticated HTTP transport with an opaque cookie jar. It is a separate integration configuration from native Chrome or the original primary spec. Its stored automation flag is false, but no browser WebDriver signal was reported.
+- Browser trials use IAB's shared profile with fresh application logins, not independently fresh browser profiles. V2's supplied tab was unavailable to the child agent; it opened its own tab. Matching server binding supports continuity of the prepared session. That routing deviation is retained.
+- H2-01 and H2-02 have one and five omitted tool bodies respectively. H2-02 omits four collaboration call/result bodies, limiting a standalone audit of interventions. The retained submitted declaration and acceptance chain is present; whole-session evidence remains incomplete.
+- V2's reviewed artifact has four omitted bodies. Its live stream contains eleven matching status arrivals but only ten paired completions. A status read is not identification. App-inventory outputs were removed from reviewed native/IAB exports; source runtime files were not changed.
+- V4-01 and V4-02 have four and six omitted tool bodies respectively, so complete session/intervention coverage is not established. V4-01's client priority event is 21 ms beyond the captured selection call's completion; that timing gap is retained. Submitted fields and acceptance are independently matched in both trials.
+- V4-02 completed its task at 16:29:49.324 UTC, about 135 seconds after handoff. The operator recorded the capture cutoff later, at 16:32:44.652596, after a context compaction. The retained recording window is about 310 seconds, exceeding the intended four-minute boundary; the task had already finished. Neither timestamp was rewritten to hide this deviation.
+- The operator's IAB trial tab was closed after logout. Child browser inventories were unavailable during cleanup, so explicit closure of the child-created tabs could not be verified.
+- Some live streams missed requests that historical lookup recovered. A failed H2 historical query using the wrong Node runtime was retained separately; its zero records are not evidence of absence.
+- Native V1 exceeded its intended four-minute boundary by about 39 seconds. Its exact interval, failed app access and Mac-lock observation remain recorded. The server session was closed, but native window cleanup requires an unlocked Mac.
+- Self-reported labels do not verify identity or delegation. No experiment grants new account permissions. Activity ratings and the primary fresh-profile/no-UI milestone are separate and remain unresolved.
+
+See [the variant definitions](discovery-variants.md) for exact differences and the V4 enforced-workflow follow-up. Private manifests, recordings, request logs, server snapshots and independent review notes remain under ignored `.local/evidence/` directories with seven-day retention markers.

@@ -141,6 +141,8 @@ Registration diagnostics emit structured `agent_request` runtime logs for regist
 
 The first [short request-arrival probe](docs/registration-arrival-probe.md) verified logging with eight control requests. It found status reads but no registration submissions during the bounded observation window. Navigation stalled before the intended unsaved priority selection; no save occurred, and the cause of absent registration remains unresolved.
 
+Follow-up [discovery experiments](docs/discovery-results.md) distinguish raw HTML policy delivery, notice-only browser prompts, and an enforced form workflow. [Variant definitions](docs/discovery-variants.md) preserve the hidden baseline and document which changes alter wording, timing, tools, or enforcement. These are exploratory configurations, not a completed primary no-UI milestone.
+
 Example declaration for a permitted agent tool:
 
 ```json
