@@ -148,6 +148,25 @@ export async function registrationStatus(db: Database, session: ResearchSession,
     declaration: s.declaration ? completeness(s.declaration) : null,
   };
 }
+/** V4 diagnostic: tighten this run's existing save policy, never declare for a visitor. */
+export async function requireRegistration(
+  db: Database,
+  session: ResearchSession,
+  now = new Date(),
+) {
+  return db.transaction(async (tx) => {
+    const [s] = await tx.select().from(sessions).where(eq(sessions.id, session.id)).for("update");
+    if (!s || !live(s, now)) return false;
+    const changed = await tx
+      .update(runs)
+      .set({ mode: "strict" })
+      .where(and(eq(runs.id, s.runId), eq(runs.mode, "selective")))
+      .returning({ id: runs.id });
+    if (changed.length)
+      await event(tx, s, "registration_requirement_enabled", { mode: "strict", variant: "v4" });
+    return true;
+  });
+}
 export async function issueNonce(db: Database, session: ResearchSession, now = new Date()) {
   const nonce = randomBytes(32).toString("hex"),
     expiresAt = new Date(now.getTime() + 5 * 60 * 1000);

@@ -97,6 +97,8 @@ test("status polling, challenge, policy and unsupported methods remain distinct"
   const cases = [
     ["/api/agent-registration", "POST", "registration_submission"],
     ["/api/agent-registration/form", "POST", "registration_submission"],
+    ["/api/agent-registration/require", "POST", "registration_requirement"],
+    ["/experiments/v4/agent-policy", "GET", "policy_read"],
     ["/experiments/v1/agent-policy", "GET", "policy_read"],
     ["/experiments/v2/agent-policy", "GET", "policy_read"],
     ["/experiments/v3/agent-policy", "GET", "policy_read"],

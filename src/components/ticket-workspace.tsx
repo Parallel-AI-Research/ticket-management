@@ -165,6 +165,25 @@ function EarlyIdentificationNotice() {
   );
 }
 
+function AccessDeclarationNotice() {
+  return (
+    <aside
+      aria-label="Access declaration"
+      className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-slate-700"
+    >
+      <p>An access declaration is required before editing tickets.</p>
+      {/* The policy is a standalone HTML route; navigate without router prefetch. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      <a
+        href="/experiments/v4/agent-policy"
+        className="font-medium text-indigo-700 underline underline-offset-4"
+      >
+        Complete access declaration
+      </a>
+    </aside>
+  );
+}
+
 export function TicketWorkspace({
   selectedKey,
   basePath = "/tickets",
@@ -189,6 +208,16 @@ export function TicketWorkspace({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const requiresAccessDeclaration = discoveryVariant === "v4";
+  const [accessStatus, setAccessStatus] = useState<{ accepted: boolean; sessionId: string } | null>(
+    null,
+  );
+  const accessBlocked =
+    requiresAccessDeclaration &&
+    (resetting ||
+      !session ||
+      accessStatus?.sessionId !== session.sessionId ||
+      accessStatus.accepted !== true);
   const selected = tickets.find((t) => t.key === selectedKey);
   const openedTicketKey = selected?.key;
   const [editorTicketKey, setEditorTicketKey] = useState(openedTicketKey);
@@ -220,6 +249,29 @@ export function TicketWorkspace({
     void refresh();
   }, [refresh]);
   useEffect(() => {
+    if (!requiresAccessDeclaration) return;
+    let cancelled = false;
+    let latestRequest = 0;
+    async function checkAccess() {
+      const request = ++latestRequest;
+      try {
+        await window.AgentGate?.ready;
+        const status = await window.AgentGate?.status();
+        if (!cancelled && request === latestRequest) setAccessStatus(status ?? null);
+      } catch {
+        if (!cancelled && request === latestRequest) setAccessStatus(null);
+      }
+    }
+    void checkAccess();
+    const interval = window.setInterval(() => void checkAccess(), 10000);
+    window.addEventListener("agentgate:accepted", checkAccess);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("agentgate:accepted", checkAccess);
+    };
+  }, [requiresAccessDeclaration]);
+  useEffect(() => {
     function observe() {
       void window.AgentGate?.track({
         type: "navigation",
@@ -243,7 +295,7 @@ export function TicketWorkspace({
     [tickets, query, priorityFilter, statusFilter],
   );
   async function save() {
-    if (!selected) return;
+    if (!selected || accessBlocked) return;
     setSaving(true);
     setSaveError("");
     setSaved(false);
@@ -278,6 +330,7 @@ export function TicketWorkspace({
   }
   async function newRun() {
     setResetting(true);
+    if (requiresAccessDeclaration) setAccessStatus(null);
     try {
       await api("/api/runs", { method: "POST", body: JSON.stringify({ taskKey: "northstar" }) });
       await window.AgentGate?.restart();
@@ -420,6 +473,7 @@ export function TicketWorkspace({
           </div>
         </header>
         <div className="mx-auto max-w-[1500px] px-5 pb-10 pt-8 sm:px-9 sm:pt-10">
+          {accessBlocked && <AccessDeclarationNotice />}
           {discoveryVariant === "v3" && <EarlyIdentificationNotice />}
           {(discoveryVariant === "v1" || discoveryVariant === "v2") && (
             <aside
@@ -728,6 +782,7 @@ export function TicketWorkspace({
           {selected && (
             <>
               <div className="flex-1 overflow-y-auto px-7 py-7">
+                {accessBlocked && <AccessDeclarationNotice />}
                 {discoveryVariant === "v3" && <EarlyIdentificationNotice />}
                 <div className="mb-8 flex items-center gap-3">
                   <Status value={selected.status} />
@@ -747,7 +802,7 @@ export function TicketWorkspace({
                     <dd>
                       <Select
                         value={priority}
-                        disabled={!selected.canEdit || saving}
+                        disabled={!selected.canEdit || saving || accessBlocked}
                         onValueChange={(value) => {
                           setPriority(value as Priority);
                           setSaved(false);
@@ -833,7 +888,9 @@ export function TicketWorkspace({
                   </span>
                   <Button
                     onClick={save}
-                    disabled={saving || !selected.canEdit || priority === selected.priority}
+                    disabled={
+                      saving || !selected.canEdit || priority === selected.priority || accessBlocked
+                    }
                     className="min-w-[132px]"
                   >
                     {saving && <Loader2 className="size-4 animate-spin" />}

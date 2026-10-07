@@ -11,7 +11,7 @@ declare global {
       ready: Promise<SessionInfo | null>;
       policy: string;
       register(declaration: Declaration): Promise<unknown>;
-      status(): Promise<{ accepted: boolean }>;
+      status(): Promise<{ accepted: boolean; sessionId: string }>;
       challenge(): Promise<unknown>;
       track(event: ClientEvent): Promise<void>;
       restart(): Promise<SessionInfo>;

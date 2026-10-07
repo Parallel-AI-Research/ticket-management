@@ -30,6 +30,8 @@
   async function initialize() {
     active = false;
     sessionInfo = await request("/api/session");
+    if (/^\/experiments\/v4\/tickets(?:\/|$)/.test(location.pathname))
+      await request("/api/agent-registration/require", {});
     await request("/api/signals", { webdriver: navigator.webdriver === true });
     await status();
     return sessionInfo;
@@ -64,7 +66,7 @@
   window.AgentGate = gate;
   if (
     location.pathname.startsWith("/tickets") ||
-    /^\/experiments\/(h1|h2|v1|v2|v3)\/tickets(?:\/|$)/.test(location.pathname)
+    /^\/experiments\/(h1|h2|v1|v2|v3|v4)\/tickets(?:\/|$)/.test(location.pathname)
   ) {
     gate.ready = initialize();
     // Keep rejection observable to the UI without an unhandled promise warning.

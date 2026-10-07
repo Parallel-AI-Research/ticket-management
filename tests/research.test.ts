@@ -261,3 +261,24 @@ test("malformed save audit preserves the actual HTTP rejection status", async ()
   assert.equal(logged?.data.code, "json_required");
   assert.equal(report?.finalTickets[0].priority, "Medium");
 });
+
+test("V4 requirement is one-way, idempotent and does not declare identity or grant permissions", async () => {
+  const { session } = await start("selective");
+  assert.equal((await service.registrationStatus(db, session)).required, false);
+  assert.equal(await service.requireRegistration(db, session), true);
+  assert.equal(await service.requireRegistration(db, session), true);
+  const status = await service.registrationStatus(db, session);
+  assert.equal(status.required, true);
+  assert.equal(status.accepted, false);
+  assert.equal((await service.savePriority(db, session.id, "northstar", "High", 0)).status, 428);
+  const report = await service.summary(db, session.id);
+  assert.equal(report?.declaration, null);
+  assert.equal(
+    report?.events.filter((e) => e.type === "registration_requirement_enabled").length,
+    1,
+  );
+  await service.register(db, session.id, declaration);
+  assert.equal((await service.savePriority(db, session.id, "meridian", "Low", 0)).status, 403);
+  await service.closeSession(db, session);
+  assert.equal(await service.requireRegistration(db, session), false);
+});

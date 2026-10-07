@@ -48,7 +48,7 @@ test("visual variants share instructions and only V2 adds an explicit blank form
 
 test("form return variant is strictly allowlisted and never changes declaration fields", () => {
   const body = "agentName=Codex&actingFor=R17&sources=current_website";
-  for (const variant of ["v2", "v3"]) {
+  for (const variant of ["v2", "v3", "v4"]) {
     const parsed = parseDiscoveryForm(`${body}&variant=${variant}`);
     assert.equal(parsed.variant, variant);
     assert.equal(parsed.declaration.success, true);

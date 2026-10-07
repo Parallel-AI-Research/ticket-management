@@ -1,9 +1,16 @@
 import { agentPolicy } from "./policy";
 
-export type DiscoveryVariant = "h1" | "h2" | "v1" | "v2" | "v3";
+export type DiscoveryVariant = "h1" | "h2" | "v1" | "v2" | "v3" | "v4";
 
 export function isDiscoveryVariant(value: unknown): value is DiscoveryVariant {
-  return value === "h1" || value === "h2" || value === "v1" || value === "v2" || value === "v3";
+  return (
+    value === "h1" ||
+    value === "h2" ||
+    value === "v1" ||
+    value === "v2" ||
+    value === "v3" ||
+    value === "v4"
+  );
 }
 
 export function inlineDiscoveryPolicy(variant: "h1" | "h2") {

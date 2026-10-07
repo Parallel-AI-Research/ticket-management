@@ -274,6 +274,21 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       await research.signal(c.db, c.session, parsed.data.webdriver);
       return json({ ok: true });
     }
+    if (method === "POST" && path === "agent-registration/require") {
+      sameOrigin(request);
+      const c = await context();
+      if (
+        !z
+          .object({})
+          .strict()
+          .safeParse(await body(request)).success
+      )
+        throw new HttpError(422, "invalid_requirement");
+      if (!(await research.requireRegistration(c.db, c.session)))
+        throw new HttpError(401, "session_expired");
+      setResult("registration_requirement_enabled");
+      return json({ required: true, mode: "strict" });
+    }
     if (method === "GET" && path === "agent-registration/status") {
       const c = await context(false, false, false);
       const status = await research.registrationStatus(c.db, c.session);

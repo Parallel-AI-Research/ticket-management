@@ -9,9 +9,10 @@ import {
 } from "../src/lib/research/discovery-variant";
 import { agentPolicy } from "../src/lib/research/policy";
 
-test("discovery routes accept only the five isolated variant names", () => {
-  for (const value of ["h1", "h2", "v1", "v2", "v3"]) assert.equal(isDiscoveryVariant(value), true);
-  for (const value of ["", "H1", "h3", "v4", "v1/tickets", "../v1", null, undefined])
+test("discovery routes accept only the six isolated variant names", () => {
+  for (const value of ["h1", "h2", "v1", "v2", "v3", "v4"])
+    assert.equal(isDiscoveryVariant(value), true);
+  for (const value of ["", "H1", "h3", "v5", "v1/tickets", "../v1", null, undefined])
     assert.equal(isDiscoveryVariant(value), false);
 });
 
@@ -77,7 +78,8 @@ test("SDK does not initialize on policy, invalid-variant, or lookalike routes", 
     "/experiments/v1/agent-policy",
     "/experiments/v2/agent-policy",
     "/experiments/v3/agent-policy",
-    "/experiments/v4/tickets",
+    "/experiments/v4/agent-policy",
+    "/experiments/v5/tickets",
     "/experiments/h3/tickets",
     "/experiments/v1/tickets-other",
   ]) {
@@ -91,4 +93,58 @@ test("SDK does not initialize on policy, invalid-variant, or lookalike routes", 
     });
     assert.equal(await window.AgentGate?.ready, null);
   }
+});
+
+test("V4 requires access before signals/status and does not submit a declaration", async () => {
+  const script = await readFile("public/agent-gate.js", "utf8");
+  for (const pathname of ["/experiments/v4/tickets", "/experiments/v4/tickets/northstar"]) {
+    const calls: { path: string; method?: string; body?: string }[] = [];
+    const window: { AgentGate?: { ready: Promise<unknown> } } = {};
+    runInNewContext(script, {
+      window,
+      location: { pathname },
+      navigator: { webdriver: false },
+      document: { visibilityState: "hidden" },
+      setInterval: () => 0,
+      fetch: async (path: string, options: { method?: string; body?: string }) => {
+        calls.push({ path, method: options.method, body: options.body });
+        return { ok: true, json: async () => ({ accepted: false }) };
+      },
+    });
+    await window.AgentGate?.ready;
+    assert.deepEqual(
+      calls.map(({ path }) => path),
+      [
+        "/api/session",
+        "/api/agent-registration/require",
+        "/api/signals",
+        "/api/agent-registration/status",
+      ],
+    );
+    assert.equal(calls[1].method, "POST");
+    assert.equal(calls[1].body, "{}");
+  }
+});
+
+test("V4 initialization rejects if the server cannot establish the access requirement", async () => {
+  const script = await readFile("public/agent-gate.js", "utf8");
+  const calls: string[] = [];
+  const window: { AgentGate?: { ready: Promise<unknown> } } = {};
+  runInNewContext(script, {
+    window,
+    location: { pathname: "/experiments/v4/tickets" },
+    navigator: { webdriver: false },
+    document: { visibilityState: "hidden" },
+    setInterval: () => 0,
+    fetch: async (path: string) => {
+      calls.push(path);
+      return {
+        ok: path !== "/api/agent-registration/require",
+        status: 503,
+        json: async () => ({ code: "service_unavailable" }),
+      };
+    },
+  });
+  await assert.rejects(window.AgentGate!.ready, /service_unavailable/);
+  assert.deepEqual(calls, ["/api/session", "/api/agent-registration/require"]);
 });
