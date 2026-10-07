@@ -1,0 +1,72 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { runInNewContext } from "node:vm";
+import { isDiscoveryVariant, serializeInlineJson } from "../src/lib/research/discovery-variant";
+import { agentPolicy } from "../src/lib/research/policy";
+
+test("discovery routes accept only the three isolated variant names", () => {
+  for (const value of ["h1", "v1", "v2"]) assert.equal(isDiscoveryVariant(value), true);
+  for (const value of ["", "H1", "v3", "v1/tickets", "../v1", null, undefined])
+    assert.equal(isDiscoveryVariant(value), false);
+});
+
+test("inline policy remains identical JSON without an HTML script-breakout opportunity", () => {
+  assert.deepEqual(JSON.parse(serializeInlineJson(agentPolicy)), agentPolicy);
+  const hostile = { text: '</script><script>alert("test")</script>&\u2028\u2029' };
+  const serialized = serializeInlineJson(hostile);
+  assert.equal(/[<>&\u2028\u2029]/.test(serialized), false);
+  assert.deepEqual(JSON.parse(serialized), hostile);
+});
+
+test("SDK initializes research sessions on each variant ticket route without declaring for the agent", async () => {
+  const script = await readFile("public/agent-gate.js", "utf8");
+  for (const pathname of [
+    "/tickets",
+    "/tickets/northstar",
+    "/experiments/h1/tickets",
+    "/experiments/v1/tickets/northstar",
+    "/experiments/v2/tickets",
+  ]) {
+    const calls: string[] = [];
+    const window: { AgentGate?: { ready: Promise<unknown> } } = {};
+    runInNewContext(script, {
+      window,
+      location: { pathname },
+      navigator: { webdriver: false },
+      document: { visibilityState: "hidden" },
+      setInterval: () => 0,
+      fetch: async (path: string) => {
+        calls.push(path);
+        return { ok: true, json: async () => ({ accepted: false }) };
+      },
+    });
+    await window.AgentGate?.ready;
+    assert.deepEqual(
+      calls,
+      ["/api/session", "/api/signals", "/api/agent-registration/status"],
+      pathname,
+    );
+  }
+});
+
+test("SDK does not initialize on policy, invalid-variant, or lookalike routes", async () => {
+  const script = await readFile("public/agent-gate.js", "utf8");
+  for (const pathname of [
+    "/login",
+    "/experiments/v1/agent-policy",
+    "/experiments/v2/agent-policy",
+    "/experiments/v3/tickets",
+    "/experiments/v1/tickets-other",
+  ]) {
+    const window: { AgentGate?: { ready: Promise<unknown> } } = {};
+    runInNewContext(script, {
+      window,
+      location: { pathname },
+      fetch: () => {
+        throw new Error(`Unexpected request on ${pathname}`);
+      },
+    });
+    assert.equal(await window.AgentGate?.ready, null);
+  }
+});

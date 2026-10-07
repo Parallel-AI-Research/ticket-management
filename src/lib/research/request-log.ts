@@ -2,6 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 
 const endpoints = {
   "/api/agent-registration": { method: "POST", operation: "registration_submission" },
+  "/api/agent-registration/form": { method: "POST", operation: "registration_submission" },
+  "/experiments/v1/agent-policy": { method: "GET", operation: "policy_read" },
+  "/experiments/v2/agent-policy": { method: "GET", operation: "policy_read" },
   "/api/agent-registration/status": { method: "GET", operation: "registration_status" },
   "/api/agent-registration/challenge": { method: "POST", operation: "registration_challenge" },
   "/api/agent-policy": { method: "GET", operation: "policy_read" },
@@ -14,6 +17,7 @@ const resultCodes = new Set([
   "registration_status_read",
   "policy_served",
   "json_required",
+  "form_required",
   "request_too_large",
   "invalid_json",
   "origin_not_allowed",

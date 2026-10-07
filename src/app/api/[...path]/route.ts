@@ -8,6 +8,11 @@ import { getDb, isFixtureMode } from "@/lib/db";
 import { sessions } from "@/lib/db/schema";
 import { eventSchema, registrationSchema, saveSchema } from "@/lib/domain";
 import { agentPolicy } from "@/lib/research/policy";
+import {
+  discoveryHtml,
+  parseDeclarationForm,
+  renderDiscoveryPolicyPage,
+} from "@/lib/research/discovery-form";
 import { withAgentRequestLog, type SetRequestLogResult } from "@/lib/research/request-log";
 import * as research from "@/lib/research/service";
 export const runtime = "nodejs";
@@ -281,6 +286,28 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       const challenge = await research.issueNonce(c.db, c.session);
       setResult("challenge_issued");
       return json(challenge);
+    }
+    if (method === "POST" && path === "agent-registration/form") {
+      sameOrigin(request);
+      const c = await context();
+      if (
+        request.headers.get("content-type")?.split(";")[0].trim() !==
+        "application/x-www-form-urlencoded"
+      )
+        throw new HttpError(415, "form_required");
+      const content = await request.text();
+      if (Buffer.byteLength(content) > 16384) throw new HttpError(413, "request_too_large");
+      const parsed = parseDeclarationForm(content);
+      const result = await research.register(
+        c.db,
+        c.session.id,
+        parsed.success ? parsed.data : null,
+      );
+      setResult(result.code);
+      return discoveryHtml(
+        renderDiscoveryPolicyPage("v2", result.code === "accepted" ? "accepted" : "rejected"),
+        result.status,
+      );
     }
     if (method === "POST" && path === "agent-registration") {
       let payload: unknown;

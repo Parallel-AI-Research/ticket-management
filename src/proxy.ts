@@ -29,4 +29,11 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
-export const config = { matcher: ["/tickets/:path*", "/login"] };
+export const config = {
+  matcher: [
+    "/tickets/:path*",
+    "/experiments/:variant/tickets/:path*",
+    "/experiments/:variant/agent-policy",
+    "/login",
+  ],
+};

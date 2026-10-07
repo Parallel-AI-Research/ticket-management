@@ -96,6 +96,9 @@ test("browser correlation hashes only the bounded research cookie and ignores in
 test("status polling, challenge, policy and unsupported methods remain distinct", async () => {
   const cases = [
     ["/api/agent-registration", "POST", "registration_submission"],
+    ["/api/agent-registration/form", "POST", "registration_submission"],
+    ["/experiments/v1/agent-policy", "GET", "policy_read"],
+    ["/experiments/v2/agent-policy", "GET", "policy_read"],
     ["/api/agent-registration/status", "GET", "registration_status"],
     ["/api/agent-registration/challenge", "POST", "registration_challenge"],
     ["/api/agent-policy", "GET", "policy_read"],
@@ -126,6 +129,7 @@ test("unknown paths and lookalikes are not logged", async () => {
     "/api/auth/login",
     "/api/agent-registration/private-id",
     "/api/agent-policy-extra",
+    "/experiments/private-id/agent-policy",
   ]) {
     const response = await withAgentRequestLog(
       new Request(`https://example.test${path}`),

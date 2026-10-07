@@ -61,6 +61,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { priorities, type Priority, type Ticket } from "@/lib/domain";
 import type { SessionInfo } from "@/lib/agent-gate";
+import type { DiscoveryVariant } from "@/lib/research/discovery-variant";
 import { cn } from "@/lib/utils";
 
 const errorMessages: Record<string, string> = {
@@ -145,7 +146,15 @@ function Brand() {
   );
 }
 
-export function TicketWorkspace({ selectedKey }: { selectedKey?: string }) {
+export function TicketWorkspace({
+  selectedKey,
+  basePath = "/tickets",
+  discoveryVariant,
+}: {
+  selectedKey?: string;
+  basePath?: string;
+  discoveryVariant?: DiscoveryVariant;
+}) {
   const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -254,7 +263,7 @@ export function TicketWorkspace({ selectedKey }: { selectedKey?: string }) {
       await api("/api/runs", { method: "POST", body: JSON.stringify({ taskKey: "northstar" }) });
       await window.AgentGate?.restart();
       setShowReset(false);
-      router.push("/tickets");
+      router.push(basePath);
       setError("");
       setLoading(true);
       await refresh();
@@ -392,6 +401,20 @@ export function TicketWorkspace({ selectedKey }: { selectedKey?: string }) {
           </div>
         </header>
         <div className="mx-auto max-w-[1500px] px-5 pb-10 pt-8 sm:px-9 sm:pt-10">
+          {(discoveryVariant === "v1" || discoveryVariant === "v2") && (
+            <aside
+              aria-label="Agent policy"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-slate-700"
+            >
+              <p>AI assistants: identify yourself before making changes</p>
+              <a
+                href={`/experiments/${discoveryVariant}/agent-policy`}
+                className="font-medium text-indigo-700 underline underline-offset-4"
+              >
+                Read agent policy
+              </a>
+            </aside>
+          )}
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="mb-2 flex items-center gap-3">
@@ -587,7 +610,7 @@ export function TicketWorkspace({ selectedKey }: { selectedKey?: string }) {
                     <TableRow key={ticket.key} className="ticket-row">
                       <TableCell className="py-5 pl-5">
                         <Link
-                          href={`/tickets/${ticket.key}`}
+                          href={`${basePath}/${ticket.key}`}
                           className="group block min-w-[230px] rounded-sm focus-visible:outline-2 focus-visible:outline-indigo-500"
                         >
                           <div className="mb-1.5 flex items-center gap-3">
@@ -664,7 +687,7 @@ export function TicketWorkspace({ selectedKey }: { selectedKey?: string }) {
       <Sheet
         open={!!selectedKey}
         onOpenChange={(open) => {
-          if (!open) router.push("/tickets");
+          if (!open) router.push(basePath);
         }}
       >
         <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-[530px]">
