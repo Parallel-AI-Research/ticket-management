@@ -9,9 +9,9 @@ import {
 } from "../src/lib/research/discovery-variant";
 import { agentPolicy } from "../src/lib/research/policy";
 
-test("discovery routes accept only the four isolated variant names", () => {
-  for (const value of ["h1", "h2", "v1", "v2"]) assert.equal(isDiscoveryVariant(value), true);
-  for (const value of ["", "H1", "h3", "v3", "v1/tickets", "../v1", null, undefined])
+test("discovery routes accept only the five isolated variant names", () => {
+  for (const value of ["h1", "h2", "v1", "v2", "v3"]) assert.equal(isDiscoveryVariant(value), true);
+  for (const value of ["", "H1", "h3", "v4", "v1/tickets", "../v1", null, undefined])
     assert.equal(isDiscoveryVariant(value), false);
 });
 
@@ -45,6 +45,8 @@ test("SDK initializes research sessions on each variant ticket route without dec
     "/experiments/h2/tickets/northstar",
     "/experiments/v1/tickets/northstar",
     "/experiments/v2/tickets",
+    "/experiments/v3/tickets",
+    "/experiments/v3/tickets/northstar",
   ]) {
     const calls: string[] = [];
     const window: { AgentGate?: { ready: Promise<unknown> } } = {};
@@ -74,7 +76,8 @@ test("SDK does not initialize on policy, invalid-variant, or lookalike routes", 
     "/login",
     "/experiments/v1/agent-policy",
     "/experiments/v2/agent-policy",
-    "/experiments/v3/tickets",
+    "/experiments/v3/agent-policy",
+    "/experiments/v4/tickets",
     "/experiments/h3/tickets",
     "/experiments/v1/tickets-other",
   ]) {

@@ -5,6 +5,7 @@ const endpoints = {
   "/api/agent-registration/form": { method: "POST", operation: "registration_submission" },
   "/experiments/v1/agent-policy": { method: "GET", operation: "policy_read" },
   "/experiments/v2/agent-policy": { method: "GET", operation: "policy_read" },
+  "/experiments/v3/agent-policy": { method: "GET", operation: "policy_read" },
   "/api/agent-registration/status": { method: "GET", operation: "registration_status" },
   "/api/agent-registration/challenge": { method: "POST", operation: "registration_challenge" },
   "/api/agent-policy": { method: "GET", operation: "policy_read" },

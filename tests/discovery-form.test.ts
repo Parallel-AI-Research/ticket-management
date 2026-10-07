@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   discoveryHtml,
   parseDeclarationForm,
+  parseDiscoveryForm,
   renderDiscoveryPolicyPage,
 } from "../src/lib/research/discovery-form";
 
@@ -43,4 +44,21 @@ test("visual variants share instructions and only V2 adds an explicit blank form
   const response = discoveryHtml(accepted);
   assert.equal(response.headers.get("Cache-Control"), "private, no-store");
   assert.match(response.headers.get("Content-Security-Policy")!, /form-action 'self'/);
+});
+
+test("form return variant is strictly allowlisted and never changes declaration fields", () => {
+  const body = "agentName=Codex&actingFor=R17&sources=current_website";
+  for (const variant of ["v2", "v3"]) {
+    const parsed = parseDiscoveryForm(`${body}&variant=${variant}`);
+    assert.equal(parsed.variant, variant);
+    assert.equal(parsed.declaration.success, true);
+    if (parsed.declaration.success)
+      assert.deepEqual(Object.keys(parsed.declaration.data).sort(), [
+        "actingFor",
+        "agentName",
+        "sources",
+      ]);
+  }
+  for (const suffix of ["&variant=https://evil.test", "&variant=v1", "&variant=v3&variant=v2"])
+    assert.equal(parseDiscoveryForm(body + suffix).declaration.success, false);
 });

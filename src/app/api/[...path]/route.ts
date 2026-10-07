@@ -10,7 +10,7 @@ import { eventSchema, registrationSchema, saveSchema } from "@/lib/domain";
 import { agentPolicy } from "@/lib/research/policy";
 import {
   discoveryHtml,
-  parseDeclarationForm,
+  parseDiscoveryForm,
   renderDiscoveryPolicyPage,
 } from "@/lib/research/discovery-form";
 import { withAgentRequestLog, type SetRequestLogResult } from "@/lib/research/request-log";
@@ -297,7 +297,7 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
         throw new HttpError(415, "form_required");
       const content = await request.text();
       if (Buffer.byteLength(content) > 16384) throw new HttpError(413, "request_too_large");
-      const parsed = parseDeclarationForm(content);
+      const { variant, declaration: parsed } = parseDiscoveryForm(content);
       const result = await research.register(
         c.db,
         c.session.id,
@@ -305,7 +305,7 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       );
       setResult(result.code);
       return discoveryHtml(
-        renderDiscoveryPolicyPage("v2", result.code === "accepted" ? "accepted" : "rejected"),
+        renderDiscoveryPolicyPage(variant, result.code === "accepted" ? "accepted" : "rejected"),
         result.status,
       );
     }

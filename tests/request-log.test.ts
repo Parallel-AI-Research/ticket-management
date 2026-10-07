@@ -99,6 +99,7 @@ test("status polling, challenge, policy and unsupported methods remain distinct"
     ["/api/agent-registration/form", "POST", "registration_submission"],
     ["/experiments/v1/agent-policy", "GET", "policy_read"],
     ["/experiments/v2/agent-policy", "GET", "policy_read"],
+    ["/experiments/v3/agent-policy", "GET", "policy_read"],
     ["/api/agent-registration/status", "GET", "registration_status"],
     ["/api/agent-registration/challenge", "POST", "registration_challenge"],
     ["/api/agent-policy", "GET", "policy_read"],

@@ -146,6 +146,25 @@ function Brand() {
   );
 }
 
+function EarlyIdentificationNotice() {
+  return (
+    <aside
+      aria-label="Agent policy"
+      className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-slate-700"
+    >
+      <p>AI assistants must identify themselves before opening tickets or preparing changes.</p>
+      {/* The policy is a standalone HTML route; navigate without router prefetch. */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      <a
+        href="/experiments/v3/agent-policy"
+        className="font-medium text-indigo-700 underline underline-offset-4"
+      >
+        Identify as an assistant
+      </a>
+    </aside>
+  );
+}
+
 export function TicketWorkspace({
   selectedKey,
   basePath = "/tickets",
@@ -401,6 +420,7 @@ export function TicketWorkspace({
           </div>
         </header>
         <div className="mx-auto max-w-[1500px] px-5 pb-10 pt-8 sm:px-9 sm:pt-10">
+          {discoveryVariant === "v3" && <EarlyIdentificationNotice />}
           {(discoveryVariant === "v1" || discoveryVariant === "v2") && (
             <aside
               aria-label="Agent policy"
@@ -708,6 +728,7 @@ export function TicketWorkspace({
           {selected && (
             <>
               <div className="flex-1 overflow-y-auto px-7 py-7">
+                {discoveryVariant === "v3" && <EarlyIdentificationNotice />}
                 <div className="mb-8 flex items-center gap-3">
                   <Status value={selected.status} />
                   <span className="text-slate-200">|</span>
