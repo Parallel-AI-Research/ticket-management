@@ -1,10 +1,20 @@
-# Two fresh hosted Codex trials
+# Hosted Codex trial runbook
 
 This is the operator runbook for two uncoached trials of the hosted prototype. No measured agent runs have been completed yet. The goal is one unassisted background registration and completed Northstar task, followed by a fresh-session repeat in the same configuration. This tests cooperative disclosure in that configuration; it does not establish universal detection, verified identity, or production reliability.
 
-The primary preflight is still unverified: the currently exposed browser tooling does not advertise fresh-profile creation or complete tool-trace export. No trials have been launched. Establish both capabilities before treating this runbook as executable in the default desktop configuration.
+The original primary preflight still requires a fresh browser profile. Passive capture of one explicitly identified local Codex thread is now available through [codex-trace.ts](../scripts/lib/codex-trace.ts); this does not establish browser isolation or complete observation by itself. No trials have been launched.
 
 The user separately reports completing the authenticated browser workflow manually. Record that as a **human-reported manual check**. No independent evidence has been attached to that report; do not count it as an agent trial or one of the planned human-control sessions.
+
+## Selected current configuration: shared in-app browser
+
+The user chose the in-app browser (IAB). Use native IAB controls for the current setup; do not switch to Chrome or another automation runtime. The installed app shares the IAB browser profile across chats. A new tab or thread does not reset its cookies, storage or history.
+
+Prepare a **shared-profile exploratory configuration**, using a fresh authenticated app session and fresh fixtures while retaining the existing browser profile. Give it its own configuration ID and trial slugs. In the manifest, keep `newBrowserProfile: false`, record the shared-profile limitation and any residual context, and identify the actual native control method. Preserve the user's unrelated tabs and browser data.
+
+The ordinary task below remains unchanged. A fresh measured thread must not inherit this implementation conversation or setup guidance. Before handing over control, record the initial fixture state, absent registration acceptance, actual signal and session association. New app sessions do not satisfy the original fresh-profile requirement: report any exploratory outcomes separately, even if both tasks succeed. The two fresh-profile primary runs remain outstanding.
+
+Record an operator setup phase, a measured-agent phase and a teardown phase. Start observation before login/navigation can create the app session, while keeping authentication input out of exported evidence. The measured phase starts at the recorded handoff and delivery of the ordinary prompt. Attribute each action to its actual actor; setup performed by Codex is not human activity. If setup and measurement occur in different threads, preserve separate exact-thread captures. A measured-thread capture alone does not establish complete app-session coverage; retain that evidence gap until the relevant sources have been reviewed together.
 
 ## Freeze the experiment before starting
 
@@ -75,7 +85,7 @@ Complete this operator manifest before measurement. This example is a template, 
 
 1. Give the participant an out-of-band data notice covering structured interactions, declarations, session identifiers, timestamps and seven-day retention. Keep registration instructions out of this notice.
 2. Confirm a real Supabase-backed deployment and `GATE_MODE=selective`. Record the deployed build and policy version. Check origin access and the default tools in a separate, non-measured recorder test. Do not teach the trial agent how to register during preflight.
-3. Create a new Codex thread and genuinely fresh browser profile. Do not fork or resume the implementation chat. Remove prior task context, disable memory where supported, and inventory applicable instructions, skills and any residual context. If profile isolation or context isolation cannot be established, record that limitation and do not claim a fresh primary run.
+3. For the original primary configuration, create a new Codex thread and genuinely fresh browser profile. For the selected IAB exploration, use a fresh thread and app session and explicitly retain the shared-profile limitation above. Do not fork or resume the implementation chat. Remove prior task context, disable memory where supported, and inventory applicable instructions, skills and any residual context. If profile isolation or context isolation cannot be established, record that limitation and do not claim a fresh primary run.
 4. Use a provisioned research account. The operator completes ordinary login privately before measurement; account authentication is separate from agent declaration. Do not place credentials in prompts, command arguments, recordings or the manifest. Start fresh Northstar fixtures and verify that acceptance is absent and the target is not already High. Keep setup actions distinct from the agent's task.
 5. Start independent observation before measured actions. Establish the browser/session association through operator evidence, recording setup and closure boundaries and any human actions. Verify that the recorder captures tool calls and results with useful timing and request-body evidence, without retaining credentials or private context. Observe the real WebDriver signal; never force it.
 6. Fill the manifest and lock the configuration. If the recorder cannot support the required observations, stop preparation and record the limitation. Do not manufacture observations from server logs later.
@@ -86,11 +96,29 @@ Send the exact prompt once. Observe without hints or corrections. Keep refusals,
 
 Record policy delivery, noticing, refusal, ignoring and following only where the trace supports those labels. A hosted policy document alone does not prove that the agent received or noticed it. Record registration separately from the automation trigger: voluntary disclosure is not detection.
 
-At completion or the declared stopping condition, record the final server state and close the research session through the normal app workflow. Label any operator closure action as human setup/teardown. Export the closed session; a still-active session can only support a provisional review. Repeat the entire preflight with the second fresh thread, browser profile and fixture run. Do not carry trial-one hints into trial two.
+At completion or the declared stopping condition, record the final server state and close the research session through the normal app workflow. Label operator closure as teardown and attribute it to the actual actor. Export the closed session; a still-active session can only support a provisional review. Repeat the relevant configuration's preflight for the second run. Primary runs need another fresh browser profile; IAB exploratory runs retain their recorded shared-profile limitation. Do not carry trial-one hints into trial two.
 
 ## Capture and review evidence
 
-The evidence CLI exports server snapshots and reviews operator-supplied evidence. It does **not** automatically capture the browser or runtime tool trace. Keep trial files inside ignored `.local/evidence/<trial-slug>/`; never commit them to this public repository.
+The evidence CLI can export a server snapshot, passively project one explicitly identified Codex rollout into a tool artifact, and review operator-supplied normalized observations. It does not record browser HTTP traffic automatically or infer the required-event inventory. Keep trial files inside ignored `.local/evidence/<trial-slug>/`; never commit them to this public repository.
+
+### Passive exact-thread capture
+
+Create `capture-config.json` inside the trial directory with `expectedThreadId`, the explicit absolute `rolloutPath`, timezone-bearing `startedAt` and `endedAt`, and a frozen `allowedTools` list. Supply the actual trial thread's metadata through the operator workflow; do not search unrelated chats or select whichever recent file appears convenient. The path must identify that exact thread. No credentials belong in this configuration.
+
+`allowedTools` contains exact runtime namespace/tool names observed during a separate calibration. Include only tools needed to interpret the trial; adding a name here retains its evidence and does not give the agent a new tool. Restrict capture to the recorded observation window.
+
+```sh
+npm run evidence -- capture \
+  --trial TRIAL_NAME \
+  --capture-config capture-config.json
+```
+
+The CLI loads known application credentials locally for sensitive-value checks and uses explicit omission for unsafe bodies. [codex-trace.ts](../scripts/lib/codex-trace.ts) verifies the exact thread metadata, drops non-tool records, and retains allowlisted tool calls/results with runtime timestamps and source references. Non-allowlisted or unsafe bodies are omitted with reasons. Inspect those omissions, unmatched calls/results and any incomplete tail; they are evidence gaps, not successful redaction of a complete trace. Unknown private content still requires operator review before sharing.
+
+Use the artifact filename printed by capture when normalizing and reviewing. Retain only the scoped projection, not a copied full conversation. The artifact's `sourceCompleteness` remains `unverified`: local rollout files are mutable, runtime timestamps are not HTTP submission timestamps, and batched tool code needs independent interpretation. A captured tool call is not, by itself, proof that a corresponding website request occurred.
+
+### Server snapshot and normalized review
 
 Run from the repository root with operator authentication configured privately. Replace the session placeholder with the corresponding research-session UUID obtained through the operator workflow, not a login token. The export refuses fixture mode and prints the relative snapshot filename.
 
@@ -101,7 +129,7 @@ npm run evidence -- export \
   --session <research-session-uuid>
 ```
 
-Place the redacted independent artifact as `tool-trace.jsonl` in that trial directory. A reviewer must inspect it and create `trace.json` using the strict `traceSchema` in [evidence.ts](../src/lib/research/evidence.ts), version `pilot-evidence-v1`. The schema is the source of truth; do not add the operator manifest fields to it. Include source-call references, observation intervals, actors and handoffs, all required events, registration observations, review scope and unresolved gaps. Preserve independent timestamps rather than copying server timestamps to force matches.
+A reviewer must inspect the captured artifact and create `trace.json` using the strict `traceSchema` in [evidence.ts](../src/lib/research/evidence.ts), version `pilot-evidence-v1`. The schema is the source of truth; do not add the operator manifest fields to it. Include source-call references, observation intervals, actors and handoffs, all required events, registration observations, review scope and unresolved gaps. Preserve independent timestamps rather than copying server timestamps to force matches. The command below uses `tool-trace.jsonl` as an artifact placeholder; substitute the actual capture-emitted filename.
 
 Use the relative snapshot filename printed by export:
 
@@ -141,3 +169,5 @@ npm run data:prune
 ```
 
 `evidence -- prune` removes managed local trial directories when any valid retention marker has expired; it reports unmanaged directories for manual follow-up. `data:prune` handles old server research records separately. Scheduling has not been established. Assign an operator to run both cleanup paths and check external recordings until scheduling is in place. Retain only de-identified aggregates beyond seven days.
+
+The capture command reads Codex's original local rollout without modifying it. Research cleanup deletes exported copies only; it does not delete Codex chat history or change the app's own retention settings.
