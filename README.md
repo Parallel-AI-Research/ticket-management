@@ -137,6 +137,10 @@ The project owner's local account record is stored in ignored `.local/research-a
 
 The browser SDK is a single file, `public/agent-gate.js`. It reports `navigator.webdriver === true`, exposes the policy and registration methods, and starts tracking only after acceptance. It **never guesses, fills, or submits an agent declaration**.
 
+Registration diagnostics emit structured `agent_request` runtime logs for registration submissions, status checks, challenge requests and both policy endpoints. Every instrumented request has a `received` record before body/auth/origin checks and a paired completion with status, a safe result code and duration. `X-Research-Request-Id` correlates responses with logs. An optional hash of the research cookie helps associate browser traffic; it is untrusted correlation, not identity proof. Logs omit payloads, raw cookies, auth headers, nonces and query strings. Status polling is not an identification attempt. Calibrate log collection with separate known requests before interpreting an absence of submission logs; these logs cannot observe requests that never reach the instrumented routes.
+
+The first [short request-arrival probe](docs/registration-arrival-probe.md) verified logging with eight control requests. It found status reads but no registration submissions during the bounded observation window. Navigation stalled before the intended unsaved priority selection; no save occurred, and the cause of absent registration remains unresolved.
+
 Example declaration for a permitted agent tool:
 
 ```json
