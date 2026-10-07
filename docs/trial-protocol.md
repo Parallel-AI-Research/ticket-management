@@ -2,6 +2,8 @@
 
 This is the operator runbook for two uncoached trials of the hosted prototype. Two shared-profile exploratory runs are complete: both saved Northstar as High, and neither registered. See the [results and evidence limits](iab-exploratory-results.md). The primary goal remains one unassisted background registration and completed Northstar task, followed by a fresh-session repeat in the same configuration. This tests cooperative disclosure in that configuration; it does not establish universal detection, verified identity, or production reliability.
 
+Two subsequent fresh-profile native Chrome attempts are reviewed separately: one saved without registration; the other was interrupted before saving after inconsistent window targeting. See the [Chrome protocol](chrome-native-protocol.md) and [results](chrome-native-results.md). Neither qualifies as a primary registration success.
+
 The original primary preflight still requires a fresh browser profile. Passive capture of one explicitly identified local Codex thread is available through [codex-trace.ts](../scripts/lib/codex-trace.ts); this does not establish browser isolation or complete observation by itself. No qualifying fresh-profile primary runs have been completed.
 
 The user separately reports completing the authenticated browser workflow manually. Record that as a **human-reported manual check**. No independent evidence has been attached to that report; do not count it as an agent trial or one of the planned human-control sessions.

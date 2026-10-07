@@ -30,8 +30,8 @@ The captures retain 22 tool records in trial 1 and 24 in trial 2. Four bodies we
 
 The current SDK does not log ticket opens or priority changes before registration. Trial 1's server save timestamp also falls 144 ms after its save tool call returned while the UI still showed “Saving…”. That is consistent with asynchronous completion; the review preserves the mismatch instead of widening the interval to obtain a match. Setup and teardown are outside the measured agents' captured windows. Full event coverage and app-session attribution remain unproven, so task completion does not justify a Routine rating.
 
-## Next experiment
+## Follow-up experiment
 
-The next planned configuration uses Chrome through native computer use, with temporary access and a fresh profile for each run. Keep the ordinary task unchanged and record this control method separately. Verify access and evidence collection before measurement. A new profile addresses browser-state isolation; it does not establish policy discovery or registration success. Chrome trials have not started.
+Two subsequent attempts used Chrome through native computer use with a fresh profile for each run. One completed the task without registering; the second was interrupted before saving after inconsistent window targeting. See the separate [Chrome results](chrome-native-results.md). A new profile addresses browser-state isolation; it does not establish policy discovery or registration success. The browser control method and recorded runtime version differ from this IAB series.
 
 The two qualifying primary successes, broader agent and human-control trials, complete event capture, and scheduled seven-day cleanup remain outstanding. Local exports have seven-day retention markers, but cleanup is not yet scheduled. These two observations are too few, and insufficiently isolated, to estimate reliability.
