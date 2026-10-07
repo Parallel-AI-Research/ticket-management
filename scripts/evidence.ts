@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { evaluateEvidence, traceSchema } from "../src/lib/research/evidence";
 import { snapshotSchema, snapshotSummarySchema } from "./lib/evidence-snapshot";
+import { readCodexToolTrace } from "./lib/codex-trace";
 import {
   appOrigin,
   MAX_EVIDENCE_BYTES,
@@ -21,6 +22,15 @@ import {
 const project = await realpath(fileURLToPath(new URL("..", import.meta.url)));
 const root = path.join(project, ".local", "evidence");
 const timestamp = z.iso.datetime({ offset: true });
+const captureConfigSchema = z
+  .object({
+    expectedThreadId: z.uuid(),
+    rolloutPath: z.string().min(1),
+    startedAt: timestamp,
+    endedAt: timestamp,
+    allowedTools: z.array(z.string().regex(/^[A-Za-z0-9_.:/-]{1,240}$/)).max(100),
+  })
+  .strict();
 const retentionSchema = z
   .object({
     schemaVersion: z.literal("evidence-retention-v1"),
@@ -83,22 +93,29 @@ async function main() {
       snapshot: { type: "string" },
       trace: { type: "string" },
       artifact: { type: "string" },
+      "capture-config": { type: "string" },
     },
   });
   if (values.help) {
     console.log(`Usage:
   npm run evidence -- export --trial NAME --origin HTTPS_ORIGIN --session UUID
   npm run evidence -- review --trial NAME --snapshot FILE --trace FILE --artifact FILE
+  npm run evidence -- capture --trial NAME --capture-config FILE
   npm run evidence -- prune
 
 Files are private, ignored, and relative to .local/evidence/NAME. Export loads OPERATOR_TOKEN
 from .env.local. Review requires a normalized observer trace and its reviewed, redacted
 original tool artifact. Hashes establish file integrity, not authenticity or completeness.
+Capture reads one explicitly named Codex rollout and thread/time window, discards private
+messages/reasoning, and marks omitted tool bodies as gaps. It does not certify completeness.
 Prune deletes expired managed trial directories; schedule it daily before measured trials.`);
     return;
   }
-  if (positionals.length !== 1 || !["export", "review", "prune"].includes(positionals[0]))
-    throw new Error("Choose export, review, or prune; use --help for syntax.");
+  if (
+    positionals.length !== 1 ||
+    !["export", "review", "capture", "prune"].includes(positionals[0])
+  )
+    throw new Error("Choose export, review, capture, or prune; use --help for syntax.");
   await privateDirectory(root);
   if (positionals[0] === "prune") {
     let removed = 0;
@@ -182,8 +199,45 @@ Prune deletes expired managed trial directories; schedule it daily before measur
 
   // Review may not create a missing trial directory or silently fetch fresh server state.
   if (!(await lstat(directory)).isDirectory())
-    throw new Error("Export a snapshot into the trial directory first.");
+    throw new Error("Prepare a private trial directory or export a snapshot first.");
   await privateDirectory(directory);
+  if (positionals[0] === "capture") {
+    if (!values["capture-config"]) throw new Error("Capture requires --capture-config FILE.");
+    const captureBytes = await readEvidence(directory, values["capture-config"]);
+    const captureConfig = captureConfigSchema.parse(JSON.parse(captureBytes.toString("utf8")));
+    const loaded = config({ path: path.join(project, ".env.local"), quiet: true });
+    const credentialNames = /PASSWORD|TOKEN|SECRET|PRIVATE_KEY|DATABASE_URL|MIGRATION_DATABASE_URL/;
+    const sensitiveValues = Object.entries({ ...loaded.parsed, ...process.env })
+      .filter(([key, value]) => credentialNames.test(key) && typeof value === "string")
+      .map(([, value]) => value as string);
+    // The participant password may differ from the implementation-test password in .env.local.
+    try {
+      const accounts = JSON.parse(
+        (await readEvidence(path.join(project, ".local"), "research-accounts.json")).toString(
+          "utf8",
+        ),
+      );
+      for (const account of z.array(z.object({ password: z.string() })).parse(accounts)) {
+        sensitiveValues.push(account.password);
+      }
+    } catch (error) {
+      // Missing optional account inventory is normal in another operator installation.
+      if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT"))
+        throw error;
+    }
+    const artifact = await readCodexToolTrace(captureConfig.rolloutPath, {
+      ...captureConfig,
+      sensitiveValues,
+      unsafeHandling: "omit",
+    });
+    await retention(directory, captureConfig.startedAt);
+    const name = filename("tool-capture");
+    const digest = await writeEvidence(directory, name, artifact);
+    console.log(
+      `Saved .local/evidence/${values.trial}/${name}. SHA256 ${digest}. ${artifact.records.length} tool records; ${artifact.integrity.omittedBodyCount} omitted bodies. Independent content and coverage review remains required.`,
+    );
+    return;
+  }
   if (!values.snapshot || !values.trace || !values.artifact)
     throw new Error("Review requires --snapshot, --trace and --artifact filenames.");
   const [snapshotBytes, traceBytes, artifactBytes] = await Promise.all([
