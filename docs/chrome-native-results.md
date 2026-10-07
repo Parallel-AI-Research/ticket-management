@@ -33,6 +33,8 @@ The agent requested exclusive Chrome access. It performed further navigation att
 
 The operator made no Chrome UI calls during the measured handoff window. After interruption, the operator closed the exact research session through the existing server service, preserving its records. This teardown avoided acting on an uncertain browser window. It did not log out the browser's Supabase Auth session. The server's closed-session task label is Failed; the experimental outcome is Interrupted, not a demonstrated refusal to register.
 
+Both trial Chrome windows were subsequently closed and their absence verified in Chrome's Window menu. This later housekeeping does not establish Auth logout for trial 2 or change the recorded outcomes. Future teardown includes window closure before opening the next trial profile.
+
 ## Evidence limits
 
 Private evidence contains baseline and closed-session snapshots, scoped captures, reviewed partial traces and reports. Public documentation excludes credentials, private session identifiers, raw conversations and unrelated browser contents.
