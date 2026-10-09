@@ -9,8 +9,8 @@ import {
 } from "../src/lib/research/discovery-variant";
 import { agentPolicy } from "../src/lib/research/policy";
 
-test("discovery routes accept only the six isolated variant names", () => {
-  for (const value of ["h1", "h2", "v1", "v2", "v3", "v4"])
+test("discovery routes accept only the isolated variant names", () => {
+  for (const value of ["h1", "h2", "v1", "v2", "v3", "v4", "w1"])
     assert.equal(isDiscoveryVariant(value), true);
   for (const value of ["", "H1", "h3", "v5", "v1/tickets", "../v1", null, undefined])
     assert.equal(isDiscoveryVariant(value), false);
@@ -48,6 +48,8 @@ test("SDK initializes research sessions on each variant ticket route without dec
     "/experiments/v2/tickets",
     "/experiments/v3/tickets",
     "/experiments/v3/tickets/northstar",
+    "/experiments/w1/tickets",
+    "/experiments/w1/tickets/northstar",
   ]) {
     const calls: string[] = [];
     const window: { AgentGate?: { ready: Promise<unknown> } } = {};

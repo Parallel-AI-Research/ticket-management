@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AgentSiteTool } from "@/components/agent-site-tool";
 import {
   inlineDiscoveryPolicy,
   isDiscoveryVariant,
@@ -16,6 +17,7 @@ export default async function DiscoveryTicketsLayout({
   if (!isDiscoveryVariant(variant)) notFound();
   return (
     <>
+      {variant === "w1" && <AgentSiteTool />}
       {(variant === "h1" || variant === "h2") && (
         <script
           id="agent-policy"

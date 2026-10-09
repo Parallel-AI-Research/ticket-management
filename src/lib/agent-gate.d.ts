@@ -10,7 +10,7 @@ declare global {
     AgentGate?: {
       ready: Promise<SessionInfo | null>;
       policy: string;
-      register(declaration: Declaration): Promise<unknown>;
+      register(declaration: Declaration & { sessionId?: string }): Promise<unknown>;
       status(): Promise<{ accepted: boolean; sessionId: string }>;
       challenge(): Promise<unknown>;
       track(event: ClientEvent): Promise<void>;
