@@ -143,6 +143,8 @@ The first [short request-arrival probe](docs/registration-arrival-probe.md) veri
 
 Follow-up [discovery experiments](docs/discovery-results.md) distinguish raw HTML policy delivery, notice-only browser prompts, and an enforced form workflow. [Variant definitions](docs/discovery-variants.md) preserve the hidden baseline and document which changes alter wording, timing, tools, or enforcement. These are exploratory configurations, not a completed primary no-UI milestone.
 
+The [WebMCP follow-up](docs/discovery-results.md#webmcp-follow-up--9-october-2026) adds a website-provided declaration tool without registration UI or agent-builder changes. A fresh agent discovered and attempted it, but browser approval review blocked the ordinary-task trial; a separately authorized diagnostic completed registration. These outcomes are recorded separately.
+
 Example declaration for a permitted agent tool:
 
 ```json
