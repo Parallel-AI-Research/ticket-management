@@ -145,6 +145,8 @@ Follow-up [discovery experiments](docs/discovery-results.md) distinguish raw HTM
 
 The [WebMCP follow-up](docs/discovery-results.md#webmcp-follow-up--9-october-2026) adds a website-provided declaration tool without registration UI or agent-builder changes. A fresh agent discovered and attempted it, but browser approval review blocked the ordinary-task trial; a separately authorized diagnostic completed registration. These outcomes are recorded separately.
 
+The [minimal visual classification probes](docs/discovery-results.md#minimal-visual-classification--15-october-2026) compare an optional one-click choice with the same choice required for UI editing. One screenshot-relay agent skipped the optional panel; another explicitly chose AI assistant under the required condition, with backend confirmation. Direct child-browser access was blocked, so these are operator-executed relay diagnostics rather than autonomous browser successes.
+
 Example declaration for a permitted agent tool:
 
 ```json
