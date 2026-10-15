@@ -19,7 +19,7 @@ Other conditions: [V4, required full declaration](https://ticket-management-indo
 ## Prepare each run
 
 1. Record browser/model versions, control method and condition. The operator records the deployed build/configuration. Review the data notice below.
-2. Use a fresh browser profile without sign-in, sync or imports, and a fresh agent conversation. Verify reliable control on a blank page first. Keep only one test window open and preserve personal windows.
+2. Use a fresh browser profile without sign-in, sync or imports, and a fresh agent conversation. Verify screenshots, typing and clicks on a neutral page first. Keep the test window visible in normal window mode, minimize other browser windows, and use one controller at a time. Preserve personal tabs. A new connection must verify the profile again; native Chrome control can select another window.
 3. Sign in privately; click **New run → Start new run**. Record the time with timezone and confirm Northstar starts at Medium. The operator records session/run IDs and checks that no declaration or classification exists.
 4. **Login redirects to `/tickets`.** Reopen the assigned experiment URL afterward. Changing variants does not reset cookies or server state; use a new session for each.
 5. Prepare screenshots/action capture, excluding login input. Record operator setup separately. Hand off the prepared profile on a blank tab; avoid interacting during measurement.
