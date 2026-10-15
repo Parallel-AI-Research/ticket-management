@@ -1,4 +1,8 @@
-# Registration discovery results — 7 October 2026
+# Registration discovery results
+
+Last updated: **15 October 2026**. Latest: [direct visual trials — 15 October 2026](#direct-visual-trials--15-october-2026).
+
+## Initial discovery experiments — 7 October 2026
 
 Two fresh HTTP agents registered and confirmed acceptance after reading an explicit inline instruction. Browser notices alone did not produce registration; an enforced form workflow produced accepted declarations in two fresh-agent browser probes. These browser probes used fresh application logins in a shared profile. The original hidden/no-UI milestone is still unproven.
 
@@ -13,7 +17,7 @@ Two fresh HTTP agents registered and confirmed acceptance after reading an expli
 
 These are small exploratory probes, not reliability estimates. Every task deliberately stopped before the priority update was saved. Server reports that label the original saved-High task Failed should not be confused with the outcome of these shortened probes.
 
-## What the evidence supports
+### What the evidence supports
 
 For both H2 trials, independently retained tool-call declaration JSON matches the transport request and the server declaration. The response's accepted event ID matches the server event, whose timestamp falls within the observed request interval. Historical backend logs contain paired arrival/completion records for the registration POST and status GET, with the prepared session binding. Both status responses report acceptance before the first `/api/tickets` call.
 
@@ -21,7 +25,7 @@ H1 delivery is established by the complete raw HTML response and retained tool o
 
 The V2 operator calibration separately produced one paired form POST with HTTP 200 and accepted outcome. It proves that the form endpoint worked under the implementation-test account; it is not an uncoached success.
 
-## Enforced browser workflow
+### Enforced browser workflow
 
 V4-01 began with server mode already verified strict and no declaration. Independent browser tool calls show both text fields set to Not disclosed, the not_disclosed source category checked, and explicit Submit. The form POST arrival, HTTP 200 accepted response, and server acceptance event all fall within that Submit call's observed interval and match the prepared session binding. The returned HTML reports acceptance; the agent then selected unsaved High. No save attempt occurred.
 
@@ -33,7 +37,7 @@ Both V4 sessions were signed out and verified closed. These experiments demonstr
 
 The strict requirement is enabled by V4's SDK and verified by the operator before measurement. An HTTP client that skips initialization can retain the default selective mode. These results do not establish unconditional enforcement for every visitor. Both V4 historical queries returned 50 request entries. V4-01's positive form pair is present; V4-02's earlier submission is absent from its capped history response but present in the live log. Neither capped response establishes complete traffic coverage.
 
-## Limits and deviations
+### Limits and deviations
 
 - H2 uses an operator-prepared authenticated HTTP transport with an opaque cookie jar. It is a separate integration configuration from native Chrome or the original primary spec. Its stored automation flag is false, but no browser WebDriver signal was reported.
 - Browser trials use IAB's shared profile with fresh application logins, not independently fresh browser profiles. V2's supplied tab was unavailable to the child agent; it opened its own tab. Matching server binding supports continuity of the prepared session. That routing deviation is retained.
