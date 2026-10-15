@@ -63,6 +63,7 @@ import { priorities, type Priority, type Ticket } from "@/lib/domain";
 import type { SessionInfo } from "@/lib/agent-gate";
 import type { DiscoveryVariant } from "@/lib/research/discovery-variant";
 import { cn } from "@/lib/utils";
+import { VisitorKindPanel } from "@/components/visitor-kind-panel";
 
 const errorMessages: Record<string, string> = {
   registration_required: "Save was blocked by the workspace access policy.",
@@ -209,6 +210,18 @@ export function TicketWorkspace({
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
   const requiresAccessDeclaration = discoveryVariant === "v4";
+  const visitorVariant =
+    discoveryVariant === "v5" || discoveryVariant === "v6" ? discoveryVariant : null;
+  const [visitorResponse, setVisitorResponse] = useState<{
+    sessionId: string;
+    variant: "v5" | "v6";
+  } | null>(null);
+  const visitorBlocked =
+    discoveryVariant === "v6" &&
+    (resetting ||
+      !session ||
+      visitorResponse?.sessionId !== session.sessionId ||
+      visitorResponse.variant !== discoveryVariant);
   const [accessStatus, setAccessStatus] = useState<{ accepted: boolean; sessionId: string } | null>(
     null,
   );
@@ -295,7 +308,7 @@ export function TicketWorkspace({
     [tickets, query, priorityFilter, statusFilter],
   );
   async function save() {
-    if (!selected || accessBlocked) return;
+    if (!selected || accessBlocked || visitorBlocked) return;
     setSaving(true);
     setSaveError("");
     setSaved(false);
@@ -793,6 +806,14 @@ export function TicketWorkspace({
                 </div>
                 <h2 className="mb-3 text-sm font-semibold">Description</h2>
                 <p className="mb-9 text-sm leading-7 text-slate-500">{selected.body}</p>
+                {visitorVariant && session && !resetting && (
+                  <VisitorKindPanel
+                    key={`${visitorVariant}:${session.sessionId}`}
+                    variant={visitorVariant}
+                    sessionId={session.sessionId}
+                    onRecorded={setVisitorResponse}
+                  />
+                )}
                 <h2 className="mb-5 border-b pb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Properties
                 </h2>
@@ -802,7 +823,7 @@ export function TicketWorkspace({
                     <dd>
                       <Select
                         value={priority}
-                        disabled={!selected.canEdit || saving || accessBlocked}
+                        disabled={!selected.canEdit || saving || accessBlocked || visitorBlocked}
                         onValueChange={(value) => {
                           setPriority(value as Priority);
                           setSaved(false);
@@ -889,7 +910,11 @@ export function TicketWorkspace({
                   <Button
                     onClick={save}
                     disabled={
-                      saving || !selected.canEdit || priority === selected.priority || accessBlocked
+                      saving ||
+                      !selected.canEdit ||
+                      priority === selected.priority ||
+                      accessBlocked ||
+                      visitorBlocked
                     }
                     className="min-w-[132px]"
                   >

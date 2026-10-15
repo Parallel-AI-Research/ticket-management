@@ -1,6 +1,6 @@
 import { agentPolicy } from "./policy";
 
-export type DiscoveryVariant = "h1" | "h2" | "v1" | "v2" | "v3" | "v4" | "w1";
+export type DiscoveryVariant = "h1" | "h2" | "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "w1";
 
 export function isDiscoveryVariant(value: unknown): value is DiscoveryVariant {
   return (
@@ -10,6 +10,8 @@ export function isDiscoveryVariant(value: unknown): value is DiscoveryVariant {
     value === "v2" ||
     value === "v3" ||
     value === "v4" ||
+    value === "v5" ||
+    value === "v6" ||
     value === "w1"
   );
 }
