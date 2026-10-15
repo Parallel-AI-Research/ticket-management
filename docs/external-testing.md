@@ -24,6 +24,8 @@ Other conditions: [V4, required full declaration](https://ticket-management-indo
 4. **Login redirects to `/tickets`.** Reopen the assigned experiment URL afterward. Changing variants does not reset cookies or server state; use a new session for each.
 5. Prepare screenshots/action capture, excluding login input. Record operator setup separately. Hand off the prepared profile on a blank tab; avoid interacting during measurement.
 
+Keep that same window open through preflight, handoff and measurement. Do not close, recreate, resize or switch it during those phases. Close it only during final teardown; a closed-window timeout is not evidence of a broken browser connection.
+
 If your agent uses HTML, DOM/accessibility, network inspection or site tools, record that as a separate configuration from screenshot-only navigation.
 
 ## Give the ordinary task
