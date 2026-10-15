@@ -2,6 +2,8 @@
 
 A Next.js application for the agent-registration research prototype. Supabase hosts PostgreSQL and authenticates research accounts. Next.js owns the registration gate, ticket authorization, sessions, and audit trail. The four synthetic fixtures are isolated per run.
 
+**Testing with your own agents?** Follow the [external testing guide](docs/external-testing.md) for hosted access, experiment links, the task prompt, and what evidence to return. No local installation is needed.
+
 ## Stack
 
 - Next.js App Router + TypeScript
