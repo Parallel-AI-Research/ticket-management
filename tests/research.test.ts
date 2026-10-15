@@ -67,7 +67,9 @@ test("operator snapshot keeps usable evidence and strips future credential-beari
     snapshot.finalTickets.find((ticket) => ticket.key === "northstar")?.priority,
     "High",
   );
-  assert.equal(snapshot.events.find((event) => event.type === "save_result")?.data.code, "saved");
+  const savedEvent = snapshot.events.find((event) => event.type === "save_result");
+  assert.ok(savedEvent && "code" in savedEvent.data);
+  assert.equal(savedEvent.data.code, "saved");
 });
 test("fresh runs have isolated fixtures, session tokens, and registration", async () => {
   const a = await start(),

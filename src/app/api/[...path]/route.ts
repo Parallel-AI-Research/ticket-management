@@ -14,6 +14,7 @@ import {
   renderDiscoveryPolicyPage,
 } from "@/lib/research/discovery-form";
 import { withAgentRequestLog, type SetRequestLogResult } from "@/lib/research/request-log";
+import { declareVisitorKind, visitorKindStatus } from "@/lib/research/visitor-kind";
 import * as research from "@/lib/research/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -273,6 +274,23 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       if (!parsed.success) throw new HttpError(422, "invalid_signal");
       await research.signal(c.db, c.session, parsed.data.webdriver);
       return json({ ok: true });
+    }
+    if (method === "POST" && path === "visitor-kind") {
+      sameOrigin(request);
+      const c = await context();
+      const result = await declareVisitorKind(c.db, c.session, await body(request));
+      setResult(result.code);
+      return json(result, result.status);
+    }
+    if (method === "GET" && path === "visitor-kind") {
+      const c = await context(false, false, false);
+      const result = await visitorKindStatus(
+        c.db,
+        c.session,
+        request.nextUrl.searchParams.get("variant"),
+      );
+      setResult(result.code);
+      return json(result, result.status);
     }
     if (method === "POST" && path === "agent-registration/require") {
       sameOrigin(request);

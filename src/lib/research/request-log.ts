@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 const endpoints = {
+  "/api/visitor-kind": { method: "POST", operation: "visitor_kind_submission" },
   "/api/agent-registration/require": { method: "POST", operation: "registration_requirement" },
   "/experiments/v4/agent-policy": { method: "GET", operation: "policy_read" },
   "/api/agent-registration": { method: "POST", operation: "registration_submission" },
@@ -15,6 +16,10 @@ const endpoints = {
 } as const;
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 const resultCodes = new Set([
+  "visitor_kind_accepted",
+  "visitor_kind_status_read",
+  "invalid_visitor_kind",
+  "invalid_visitor_kind_variant",
   "accepted",
   "challenge_issued",
   "registration_status_read",
@@ -76,10 +81,12 @@ export async function withAgentRequestLog(
   const configuration = endpoints[endpoint];
   const method = methods.has(request.method) ? request.method : "OTHER";
   const operation =
-    method === configuration.method ||
-    (method === "HEAD" && endpoint === "/.well-known/agent-policy")
-      ? configuration.operation
-      : "unsupported_method";
+    endpoint === "/api/visitor-kind" && method === "GET"
+      ? "visitor_kind_status"
+      : method === configuration.method ||
+          (method === "HEAD" && endpoint === "/.well-known/agent-policy")
+        ? configuration.operation
+        : "unsupported_method";
   const fields = {
     event: "agent_request",
     requestId: randomUUID(),

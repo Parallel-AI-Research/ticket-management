@@ -41,6 +41,15 @@ const eventData = z.object({
   path: shortText.optional(),
   outcome: z.enum(["success", "blocked", "error"]).optional(),
 });
+const snapshotEvent = summarySchema.shape.events.element.extend({ data: eventData });
+const visitorKindEvent = snapshotEvent.extend({
+  type: z.literal("visitor_kind_declared"),
+  data: z.object({
+    variant: z.enum(["v5", "v6"]),
+    choice: z.enum(["ai_assistant", "person", "prefer_not_to_say"]),
+    evidence: z.literal("self_reported"),
+  }),
+});
 
 export const snapshotSummarySchema = summarySchema.extend({
   session: summarySchema.shape.session.extend({
@@ -64,7 +73,14 @@ export const snapshotSummarySchema = summarySchema.extend({
       }),
     )
     .length(4),
-  events: z.array(summarySchema.shape.events.element.extend({ data: eventData })),
+  events: z.array(
+    z.union([
+      visitorKindEvent,
+      snapshotEvent.extend({
+        type: z.string().refine((value) => value !== "visitor_kind_declared"),
+      }),
+    ]),
+  ),
 });
 
 export const snapshotSchema = z.object({

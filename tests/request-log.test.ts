@@ -95,6 +95,9 @@ test("browser correlation hashes only the bounded research cookie and ignores in
 
 test("status polling, challenge, policy and unsupported methods remain distinct", async () => {
   const cases = [
+    ["/api/visitor-kind", "POST", "visitor_kind_submission"],
+    ["/api/visitor-kind", "GET", "visitor_kind_status"],
+    ["/api/visitor-kind", "HEAD", "unsupported_method"],
     ["/api/agent-registration", "POST", "registration_submission"],
     ["/api/agent-registration/form", "POST", "registration_submission"],
     ["/api/agent-registration/require", "POST", "registration_requirement"],
@@ -124,6 +127,37 @@ test("status polling, challenge, policy and unsupported methods remain distinct"
     ids.add(records[0].requestId);
   }
   assert.equal(ids.size, cases.length);
+});
+
+test("visitor-kind logs pair requests without recording choice or query payload", async () => {
+  for (const [method, code] of [
+    ["POST", "visitor_kind_accepted"],
+    ["GET", "visitor_kind_status_read"],
+    ["POST", "invalid_visitor_kind"],
+    ["GET", "invalid_visitor_kind_variant"],
+  ]) {
+    const { records, write } = capture();
+    const request = new Request("https://example.test/api/visitor-kind?variant=private-query", {
+      method,
+      ...(method === "POST" ? { body: "private-choice" } : {}),
+    });
+    const response = await withAgentRequestLog(
+      request,
+      (setResult) => {
+        assert.equal(request.bodyUsed, false);
+        setResult(code);
+        return Response.json({ choice: "private-response" });
+      },
+      write,
+    );
+    assert.equal(response.bodyUsed, false);
+    assert.equal(records.length, 2);
+    assert.equal(records[0].phase, "received");
+    assert.equal(records[1].phase, "completed");
+    assert.equal(records[0].requestId, records[1].requestId);
+    assert.equal(records[1].resultCode, code);
+    assert.equal(JSON.stringify(records).includes("private-"), false);
+  }
 });
 
 test("unknown paths and lookalikes are not logged", async () => {
