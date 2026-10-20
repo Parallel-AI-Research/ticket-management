@@ -17,6 +17,7 @@
     "dev:fixture": "LOCAL_FIXTURE_MODE=true next dev --hostname 127.0.0.1",
     "test:http": "node scripts/http-smoke.mjs",
     "test:live": "node scripts/live-smoke.mjs",
+    "test:package": "node scripts/package-smoke.mjs",
     "data:prune": "node --import tsx scripts/prune.ts",
     "evidence": "node --import tsx scripts/evidence.ts"
   },
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",

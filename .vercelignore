@@ -23,6 +23,7 @@ coverage/
 docs/
 scripts/http-smoke.mjs
 scripts/live-smoke.mjs
+scripts/package-smoke.mjs
 scripts/evidence.ts
 scripts/lib/
 .DS_Store

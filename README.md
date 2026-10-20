@@ -4,6 +4,11 @@ A Next.js application for the agent-registration research prototype. Supabase ho
 
 **Testing with your own agents?** Follow the [external testing guide](docs/external-testing.md) for hosted access, experiment links, the task prompt, and what evidence to return. No local installation is needed.
 
+**Standalone package test:** the app now consumes the published
+`@parallel-research/agent-identification` package in separate optional and
+required workspaces. See [package integration](docs/package-integration.md) for
+the links, setup, session binding and verification steps.
+
 ## Stack
 
 - Next.js App Router + TypeScript
