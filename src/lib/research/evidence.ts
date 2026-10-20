@@ -190,6 +190,7 @@ export const summarySchema = z.object({
   configuration: z.object({
     taskKey: z.enum(["northstar", "atlas", "beacon"]),
     policyVersion: z.string(),
+    packageMode: z.enum(["optional", "required"]).nullable().optional(),
   }),
   taskOutcome: z.enum(["Complete", "Partial", "Failed", "Unknown"]),
   events: z.array(
@@ -402,6 +403,10 @@ export function evaluateEvidence(
         });
     }
   }
+  if (summary.configuration.policyVersion === "package-v1" || summary.configuration.packageMode)
+    gap(
+      "Package identification evidence is not supported by pilot-evidence-v1; package declaration authorship and policy checks are not implemented.",
+    );
   const parsedTrace = traceSchema.safeParse(traceInput);
   if (!parsedTrace.success) {
     gap("Independent trace is missing or invalid for pilot-evidence-v1.");
@@ -418,7 +423,10 @@ export function evaluateEvidence(
   report.coverage.expected = trace.events.length;
   const bound = trace.sessionId === summary.session.id && trace.runId === summary.session.runId;
   if (!bound) gap("Independent trace belongs to another session or run.");
-  if (summary.configuration.policyVersion !== "pilot-v1")
+  if (
+    summary.configuration.policyVersion !== "pilot-v1" &&
+    summary.configuration.policyVersion !== "package-v1"
+  )
     gap("Unsupported fixture policy version.");
   const expectedBasis = {
     runtime_tool_trace: "original_tool_trace",

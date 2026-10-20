@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
 const endpoints = {
+  "/api/package-identification/context": { method: "POST", operation: "package_context" },
+  "/api/package-identification/receipt": { method: "POST", operation: "package_receipt" },
   "/api/visitor-kind": { method: "POST", operation: "visitor_kind_submission" },
   "/api/agent-registration/require": { method: "POST", operation: "registration_requirement" },
   "/experiments/v4/agent-policy": { method: "GET", operation: "policy_read" },
@@ -16,6 +18,13 @@ const endpoints = {
 } as const;
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 const resultCodes = new Set([
+  "package_context_issued",
+  "package_receipt_verified",
+  "package_mode_mismatch",
+  "invalid_package_request",
+  "identification_required",
+  "identification_invalid",
+  "identification_unavailable",
   "visitor_kind_accepted",
   "visitor_kind_status_read",
   "invalid_visitor_kind",

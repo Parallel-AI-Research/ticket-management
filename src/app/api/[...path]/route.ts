@@ -15,10 +15,24 @@ import {
 } from "@/lib/research/discovery-form";
 import { withAgentRequestLog, type SetRequestLogResult } from "@/lib/research/request-log";
 import { declareVisitorKind, visitorKindStatus } from "@/lib/research/visitor-kind";
+import {
+  issuePackageContext,
+  packageMode,
+  packageSettings,
+  recordPackageReceipt,
+} from "@/lib/research/package-identification";
 import * as research from "@/lib/research/service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const COOKIE = "parallel_research_session";
+const packageModeSchema = z.enum(["optional", "required"]);
+const packageRequestSchema = z.object({
+  sessionId: z.uuid(),
+  mode: packageModeSchema,
+});
+const packageSaveSchema = saveSchema.extend({
+  declarationReceipt: z.string().min(1).max(4096).optional(),
+});
 class HttpError extends Error {
   constructor(
     public status: number,
@@ -190,6 +204,7 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
         runId: c.session.runId,
         sessionId: c.session.id,
         fixtureMode: c.user.fixture,
+        packageMode: await packageMode(c.db, c.session),
       });
     }
     if (method === "GET" && path === "tickets") {
@@ -235,13 +250,16 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
         );
         throw e;
       }
-      const parsed = saveSchema.safeParse(payload);
+      const parsed = packageSaveSchema.safeParse(payload);
       const result = await research.savePriority(
         c.db,
         c.session.id,
         path.split("/")[1],
         parsed.success ? parsed.data.priority : null,
         parsed.success ? parsed.data.version : null,
+        new Date(),
+        undefined,
+        { receipt: parsed.success ? parsed.data.declarationReceipt : undefined },
       );
       return json(result, result.status);
     }
@@ -249,10 +267,14 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       sameOrigin(request);
       const c = await context(true);
       const parsed = z
-        .object({ taskKey: z.enum(["northstar", "atlas", "beacon"]).default("northstar") })
+        .object({
+          taskKey: z.enum(["northstar", "atlas", "beacon"]).default("northstar"),
+          packageMode: packageModeSchema.optional(),
+        })
         .strict()
         .safeParse(await body(request));
       if (!parsed.success) throw new HttpError(422, "invalid_task");
+      if (parsed.data.packageMode) packageSettings();
       await research.closeSession(c.db, c.session, "new_run");
       const created = await research.startRun(
         c.db,
@@ -260,9 +282,39 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
         c.user.authSessionId,
         parsed.data.taskKey,
         process.env.GATE_MODE === "strict" ? "strict" : "selective",
+        new Date(),
+        parsed.data.packageMode ?? null,
       );
       await setSessionCookie(created.token);
       return json({ runId: created.session.runId, sessionId: created.session.id }, 201);
+    }
+    if (method === "POST" && path === "package-identification/context") {
+      sameOrigin(request);
+      const c = await context(false, false, false);
+      const parsed = packageRequestSchema.strict().safeParse(await body(request));
+      if (!parsed.success) throw new HttpError(422, "invalid_package_request");
+      if (parsed.data.sessionId !== c.session.id) throw new HttpError(403, "session_mismatch");
+      const result = await issuePackageContext(c.db, c.session, parsed.data.mode);
+      setResult(result.code);
+      return json(result, result.status);
+    }
+    if (method === "POST" && path === "package-identification/receipt") {
+      sameOrigin(request);
+      const c = await context(false, false, false);
+      const parsed = packageRequestSchema
+        .extend({ receipt: z.string().min(1).max(4096) })
+        .strict()
+        .safeParse(await body(request));
+      if (!parsed.success) throw new HttpError(422, "invalid_package_request");
+      if (parsed.data.sessionId !== c.session.id) throw new HttpError(403, "session_mismatch");
+      const result = await recordPackageReceipt(
+        c.db,
+        c.session,
+        parsed.data.mode,
+        parsed.data.receipt,
+      );
+      setResult(result.code);
+      return json(result, result.status);
     }
     if (method === "POST" && path === "signals") {
       sameOrigin(request);

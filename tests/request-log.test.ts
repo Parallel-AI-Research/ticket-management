@@ -95,6 +95,8 @@ test("browser correlation hashes only the bounded research cookie and ignores in
 
 test("status polling, challenge, policy and unsupported methods remain distinct", async () => {
   const cases = [
+    ["/api/package-identification/context", "POST", "package_context"],
+    ["/api/package-identification/receipt", "POST", "package_receipt"],
     ["/api/visitor-kind", "POST", "visitor_kind_submission"],
     ["/api/visitor-kind", "GET", "visitor_kind_status"],
     ["/api/visitor-kind", "HEAD", "unsupported_method"],
@@ -127,6 +129,34 @@ test("status polling, challenge, policy and unsupported methods remain distinct"
     ids.add(records[0].requestId);
   }
   assert.equal(ids.size, cases.length);
+});
+
+test("package diagnostics omit signed contexts and receipts from every result", async () => {
+  for (const [endpoint, code] of [
+    ["context", "package_context_issued"],
+    ["receipt", "package_receipt_verified"],
+    ["receipt", "identification_invalid"],
+    ["receipt", "identification_unavailable"],
+  ]) {
+    const { records, write } = capture();
+    const request = new Request(`https://example.test/api/package-identification/${endpoint}`, {
+      method: "POST",
+      body: JSON.stringify({ receipt: "private-receipt", sessionId: "private-session" }),
+    });
+    const response = await withAgentRequestLog(
+      request,
+      (setResult) => {
+        assert.equal(request.bodyUsed, false);
+        setResult(code);
+        return Response.json({ bindingContext: "private-context", receipt: "private-receipt" });
+      },
+      write,
+    );
+    assert.equal(response.bodyUsed, false);
+    assert.equal(records.length, 2);
+    assert.equal(records[1].resultCode, code);
+    assert.equal(JSON.stringify(records).includes("private-"), false);
+  }
 });
 
 test("visitor-kind logs pair requests without recording choice or query payload", async () => {

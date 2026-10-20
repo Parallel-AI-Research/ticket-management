@@ -50,6 +50,43 @@ const visitorKindEvent = snapshotEvent.extend({
     evidence: z.literal("self_reported"),
   }),
 });
+const packageMode = z.enum(["optional", "required"]);
+const packageChoice = z.enum(["ai_assistant", "person", "prefer_not_to_say"]);
+const packageDeclarationEvent = snapshotEvent.extend({
+  type: z.literal("package_declaration_recorded"),
+  data: z.object({
+    mode: packageMode,
+    choice: packageChoice,
+    collectorSessionId: z.uuid(),
+    collectorEventId: z.uuid(),
+    evidence: z.literal("self_reported"),
+    sdkVersion: z.literal("0.1.0"),
+  }),
+});
+const sessionStartedEvent = snapshotEvent.extend({
+  type: z.literal("session_started"),
+  data: eventData.extend({ packageMode: packageMode.optional() }),
+});
+const saveAttemptEvent = snapshotEvent.extend({
+  type: z.literal("save_attempt"),
+  data: eventData.extend({ packageMode: packageMode.optional() }),
+});
+const saveResultEvent = snapshotEvent.extend({
+  type: z.literal("save_result"),
+  data: eventData.extend({
+    packageMode: packageMode.optional(),
+    collectorSessionId: z.uuid().optional(),
+    collectorEventId: z.uuid().optional(),
+    choice: packageChoice.optional(),
+  }),
+});
+const projectedEventTypes = new Set([
+  "visitor_kind_declared",
+  "package_declaration_recorded",
+  "session_started",
+  "save_attempt",
+  "save_result",
+]);
 
 export const snapshotSummarySchema = summarySchema.extend({
   session: summarySchema.shape.session.extend({
@@ -76,8 +113,12 @@ export const snapshotSummarySchema = summarySchema.extend({
   events: z.array(
     z.union([
       visitorKindEvent,
+      packageDeclarationEvent,
+      sessionStartedEvent,
+      saveAttemptEvent,
+      saveResultEvent,
       snapshotEvent.extend({
-        type: z.string().refine((value) => value !== "visitor_kind_declared"),
+        type: z.string().refine((value) => !projectedEventTypes.has(value)),
       }),
     ]),
   ),

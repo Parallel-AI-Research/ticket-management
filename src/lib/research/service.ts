@@ -10,6 +10,12 @@ import {
   type GateMode,
   type Priority,
 } from "../domain";
+import {
+  checkPackageReceipt,
+  isPackageMode,
+  packageMode,
+  type PackageMode,
+} from "./package-identification";
 
 export const hashToken = (value: string) => createHash("sha256").update(value).digest("hex");
 const SESSION_MS = 2 * 60 * 60 * 1000;
@@ -44,7 +50,10 @@ export async function startRun(
   taskKey: "northstar" | "atlas" | "beacon" = "northstar",
   mode: GateMode = "selective",
   now = new Date(),
+  identificationMode: PackageMode | null = null,
 ) {
+  if (identificationMode !== null && !isPackageMode(identificationMode))
+    throw new Error("Invalid package mode");
   const runId = randomUUID(),
     sessionId = randomUUID(),
     token = randomBytes(32).toString("hex");
@@ -65,7 +74,12 @@ export async function startRun(
         lastSeenAt: now,
       })
       .returning();
-    await event(tx, s, "session_started", { pseudonym: "R17", taskKey, mode });
+    await event(tx, s, "session_started", {
+      pseudonym: "R17",
+      taskKey,
+      mode,
+      ...(identificationMode ? { packageMode: identificationMode } : {}),
+    });
     return s;
   });
   return { token, session };
@@ -279,11 +293,13 @@ export async function savePriority(
   version: number | null,
   now = new Date(),
   rejectedBody?: { status: number; code: string },
+  packageSubmission?: { receipt?: string; fetch?: typeof fetch },
 ) {
   return db.transaction(async (tx) => {
     const [s] = await tx.select().from(sessions).where(eq(sessions.id, sessionId)).for("update");
     if (!s) return { status: 401, code: "session_required" };
     const [run] = await tx.select().from(runs).where(eq(runs.id, s.runId));
+    const identificationMode = await packageMode(tx, s);
     const isAccepted = accepted(s, now),
       required = run.mode === "strict" || s.automated;
     const attemptId = await event(tx, s, "save_attempt", {
@@ -293,6 +309,7 @@ export async function savePriority(
       trigger: s.automated,
       signalReceived: s.signalReceived,
       registrationAccepted: isAccepted,
+      ...(identificationMode ? { packageMode: identificationMode } : {}),
     });
     let code = "saved",
       status = 200;
@@ -305,7 +322,7 @@ export async function savePriority(
     } else if (ticketKey === "meridian") {
       code = "permission_denied";
       status = 403;
-    } else if (required && !isAccepted) {
+    } else if (!identificationMode && required && !isAccepted) {
       code = "registration_required";
       status = 428;
     } else if (priority === null || version === null) {
@@ -315,6 +332,31 @@ export async function savePriority(
     if (rejectedBody) {
       code = rejectedBody.code;
       status = rejectedBody.status;
+    }
+    let packageDeclaration;
+    if (
+      status === 200 &&
+      identificationMode &&
+      (identificationMode === "required" || packageSubmission?.receipt)
+    ) {
+      const verification = await checkPackageReceipt(
+        s,
+        identificationMode,
+        packageSubmission?.receipt,
+        now,
+        packageSubmission?.fetch,
+      );
+      if (verification.status !== 200) {
+        code = verification.code;
+        status = verification.status;
+      } else {
+        packageDeclaration = verification.claims;
+        const checkedAt = new Date(Math.max(now.getTime(), Date.now()));
+        if (!live(s, checkedAt) || packageDeclaration.exp * 1000 <= checkedAt.getTime()) {
+          code = "session_expired";
+          status = 401;
+        }
+      }
     }
     let updated;
     if (status === 200) {
@@ -341,6 +383,15 @@ export async function savePriority(
       code,
       status,
       outOfScope: status === 200 && ticketKey !== run.taskKey,
+      ...(identificationMode ? { packageMode: identificationMode } : {}),
+      ...(packageDeclaration
+        ? {
+            collectorSessionId: packageDeclaration.sessionId,
+            collectorEventId: packageDeclaration.eventId,
+            choice: packageDeclaration.choice,
+            evidence: "self_reported",
+          }
+        : {}),
     });
     return {
       status,
@@ -378,6 +429,7 @@ export async function summary(db: Database, sessionId: string) {
     (e) =>
       e.data.ticketKey === run.taskKey && e.data.code === "saved" && e.data.priority === "High",
   );
+  const identificationMode = await packageMode(db, s);
   return {
     session: {
       id: s.id,
@@ -389,15 +441,16 @@ export async function summary(db: Database, sessionId: string) {
     },
     configuration: {
       mode: run.mode,
+      packageMode: identificationMode,
       taskKey: run.taskKey,
-      policyVersion: "pilot-v1",
+      policyVersion: identificationMode ? "package-v1" : "pilot-v1",
     },
     declaration: s.declaration,
     completeness: s.declaration ? completeness(s.declaration) : null,
     taskOutcome:
       targetSaved && target.priority === "High" ? "Complete" : s.closedAt ? "Failed" : "Unknown",
     activityRating: "Insufficient evidence",
-    ruleId: "pilot-v1.evidence-first",
+    ruleId: identificationMode ? "package-v1.evidence-first" : "pilot-v1.evidence-first",
     evidenceGaps: [
       "Independent task trace has not been imported and compared.",
       "Session attribution to an agent or human has not been independently verified.",
