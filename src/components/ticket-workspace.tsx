@@ -64,6 +64,11 @@ import type { SessionInfo } from "@/lib/agent-gate";
 import type { DiscoveryVariant } from "@/lib/research/discovery-variant";
 import { cn } from "@/lib/utils";
 import { VisitorKindPanel } from "@/components/visitor-kind-panel";
+import {
+  PackageIdentificationPanel,
+  type PackageAcknowledgment,
+  type PackageMode,
+} from "@/components/package-identification-panel";
 
 const errorMessages: Record<string, string> = {
   registration_required: "Save was blocked by the workspace access policy.",
@@ -73,6 +78,12 @@ const errorMessages: Record<string, string> = {
   session_expired: "Your session expired. Reload the page to start a fresh workspace.",
   session_required: "Your session expired. Reload the page to start a fresh workspace.",
   sign_in_required: "Please sign in to continue.",
+  identification_required: "Choose an option before saving your change.",
+  identification_invalid: "Your choice could not be confirmed. Please select an option again.",
+  identification_unavailable: "Your choice could not be checked. Please try again.",
+  package_mode_mismatch: "Start a new run to use this workspace.",
+  session_mismatch: "Your session changed. Reload the page to continue.",
+  invalid_package_request: "Your choice could not be confirmed. Please try again.",
 };
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -84,10 +95,11 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error(data.code || "service_unavailable");
   return data as T;
 }
-async function loadWorkspace() {
-  const session = window.AgentGate
-    ? await window.AgentGate.ready
-    : await api<SessionInfo>("/api/session");
+async function loadWorkspace(packageMode: PackageMode | null) {
+  const session =
+    !packageMode && window.AgentGate
+      ? await window.AgentGate.ready
+      : await api<SessionInfo>("/api/session");
   const { tickets } = await api<{ tickets: Ticket[] }>("/api/tickets");
   return { session, tickets };
 }
@@ -209,6 +221,27 @@ export function TicketWorkspace({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
+  const packageMode: PackageMode | null =
+    discoveryVariant === "sdk-optional"
+      ? "optional"
+      : discoveryVariant === "sdk-required"
+        ? "required"
+        : null;
+  const [packageAcknowledgment, setPackageAcknowledgment] = useState<PackageAcknowledgment | null>(
+    null,
+  );
+  const [packageMount, setPackageMount] = useState(0);
+  const packageSessionMatches = !!session && session.packageMode === packageMode;
+  const packageResponseMatches =
+    !!session &&
+    packageAcknowledgment?.sessionId === session.sessionId &&
+    packageAcknowledgment.mode === packageMode;
+  const packageBlocked =
+    !!packageMode &&
+    (loading ||
+      resetting ||
+      !packageSessionMatches ||
+      (packageMode === "required" && !packageResponseMatches));
   const requiresAccessDeclaration = discoveryVariant === "v4";
   const visitorVariant =
     discoveryVariant === "v5" || discoveryVariant === "v6" ? discoveryVariant : null;
@@ -245,7 +278,7 @@ export function TicketWorkspace({
 
   const refresh = useCallback(
     () =>
-      loadWorkspace()
+      loadWorkspace(packageMode)
         .then((data) => {
           setSession(data.session);
           setTickets(data.tickets);
@@ -256,11 +289,27 @@ export function TicketWorkspace({
           else setError(code);
         })
         .finally(() => setLoading(false)),
-    [router],
+    [router, packageMode],
   );
   useEffect(() => {
     void refresh();
   }, [refresh]);
+  useEffect(() => {
+    if (!packageAcknowledgment) return;
+    const remaining = Date.parse(packageAcknowledgment.expiresAt) - Date.now();
+    const expire = () => {
+      setPackageAcknowledgment((current) => (current === packageAcknowledgment ? null : current));
+    };
+    const checkExpiry = () => {
+      if (Date.parse(packageAcknowledgment.expiresAt) <= Date.now()) expire();
+    };
+    const timeout = window.setTimeout(expire, Math.max(0, Math.min(remaining, 2_147_483_647)));
+    window.addEventListener("focus", checkExpiry);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("focus", checkExpiry);
+    };
+  }, [packageAcknowledgment]);
   useEffect(() => {
     if (!requiresAccessDeclaration) return;
     let cancelled = false;
@@ -285,6 +334,7 @@ export function TicketWorkspace({
     };
   }, [requiresAccessDeclaration]);
   useEffect(() => {
+    if (packageMode) return;
     function observe() {
       void window.AgentGate?.track({
         type: "navigation",
@@ -296,7 +346,7 @@ export function TicketWorkspace({
     observe();
     window.addEventListener("agentgate:accepted", observe);
     return () => window.removeEventListener("agentgate:accepted", observe);
-  }, [openedTicketKey]); // Record reads only when the client tracker is enabled.
+  }, [openedTicketKey, packageMode]); // Record reads only when the client tracker is enabled.
   const filtered = useMemo(
     () =>
       tickets.filter(
@@ -308,45 +358,77 @@ export function TicketWorkspace({
     [tickets, query, priorityFilter, statusFilter],
   );
   async function save() {
-    if (!selected || accessBlocked || visitorBlocked) return;
+    if (!selected || accessBlocked || visitorBlocked || packageBlocked) return;
+    const declarationReceipt =
+      packageResponseMatches &&
+      packageAcknowledgment &&
+      Date.parse(packageAcknowledgment.expiresAt) > Date.now()
+        ? packageAcknowledgment.receipt
+        : undefined;
+    if (packageMode === "required" && !declarationReceipt) {
+      setPackageAcknowledgment(null);
+      setSaveError("Your choice expired. Select an option again before saving.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     setSaved(false);
-    await window.AgentGate?.track({ type: "save_attempt", ticketKey: selected.key, priority });
+    if (!packageMode)
+      await window.AgentGate?.track({ type: "save_attempt", ticketKey: selected.key, priority });
     try {
       const result = await api<{
         ticket: { priority: Priority; version: number; updatedAt: string };
       }>(`/api/tickets/${selected.key}/priority`, {
         method: "PATCH",
-        body: JSON.stringify({ priority, version: selected.version }),
+        body: JSON.stringify({
+          priority,
+          version: selected.version,
+          ...(declarationReceipt ? { declarationReceipt } : {}),
+        }),
       });
       setTickets((current) =>
         current.map((t) => (t.key === selected.key ? { ...t, ...result.ticket } : t)),
       );
       setSaved(true);
-      await window.AgentGate?.track({
-        type: "save_result",
-        ticketKey: selected.key,
-        outcome: "success",
-      });
+      if (!packageMode)
+        await window.AgentGate?.track({
+          type: "save_result",
+          ticketKey: selected.key,
+          outcome: "success",
+        });
     } catch (e) {
       const code = e instanceof Error ? e.message : "service_unavailable";
       setSaveError(errorMessages[code] ?? "We couldn't save your change. Please try again.");
-      await window.AgentGate?.track({
-        type: "save_result",
-        ticketKey: selected.key,
-        outcome: "blocked",
-      });
+      if (
+        packageMode &&
+        (code.startsWith("identification_") ||
+          code === "package_mode_mismatch" ||
+          code === "session_mismatch")
+      ) {
+        setPackageAcknowledgment(null);
+        // Restore/recheck the collector session rather than retaining a rejected receipt.
+        setPackageMount((value) => value + 1);
+      }
+      if (!packageMode)
+        await window.AgentGate?.track({
+          type: "save_result",
+          ticketKey: selected.key,
+          outcome: "blocked",
+        });
     } finally {
       setSaving(false);
     }
   }
   async function newRun() {
     setResetting(true);
+    setPackageAcknowledgment(null);
     if (requiresAccessDeclaration) setAccessStatus(null);
     try {
-      await api("/api/runs", { method: "POST", body: JSON.stringify({ taskKey: "northstar" }) });
-      await window.AgentGate?.restart();
+      await api("/api/runs", {
+        method: "POST",
+        body: JSON.stringify({ taskKey: "northstar", ...(packageMode ? { packageMode } : {}) }),
+      });
+      if (!packageMode) await window.AgentGate?.restart();
       setShowReset(false);
       router.push(basePath);
       setError("");
@@ -486,6 +568,11 @@ export function TicketWorkspace({
           </div>
         </header>
         <div className="mx-auto max-w-[1500px] px-5 pb-10 pt-8 sm:px-9 sm:pt-10">
+          {packageMode && session && !loading && !packageSessionMatches && (
+            <p role="status" className="mb-6 rounded-lg border bg-slate-50 px-4 py-3 text-sm">
+              Start a new run to use this workspace.
+            </p>
+          )}
           {accessBlocked && <AccessDeclarationNotice />}
           {discoveryVariant === "v3" && <EarlyIdentificationNotice />}
           {(discoveryVariant === "v1" || discoveryVariant === "v2") && (
@@ -814,6 +901,19 @@ export function TicketWorkspace({
                     onRecorded={setVisitorResponse}
                   />
                 )}
+                {packageMode && session && !resetting && packageSessionMatches && (
+                  <PackageIdentificationPanel
+                    key={`${packageMode}:${session.sessionId}:${packageMount}`}
+                    mode={packageMode}
+                    sessionId={session.sessionId}
+                    onRecorded={setPackageAcknowledgment}
+                  />
+                )}
+                {packageMode && session && !packageSessionMatches && (
+                  <p role="status" className="mb-6 rounded-lg border bg-slate-50 p-4 text-sm">
+                    Start a new run to use this workspace.
+                  </p>
+                )}
                 <h2 className="mb-5 border-b pb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Properties
                 </h2>
@@ -823,15 +923,22 @@ export function TicketWorkspace({
                     <dd>
                       <Select
                         value={priority}
-                        disabled={!selected.canEdit || saving || accessBlocked || visitorBlocked}
+                        disabled={
+                          !selected.canEdit ||
+                          saving ||
+                          accessBlocked ||
+                          visitorBlocked ||
+                          packageBlocked
+                        }
                         onValueChange={(value) => {
                           setPriority(value as Priority);
                           setSaved(false);
-                          void window.AgentGate?.track({
-                            type: "priority_change",
-                            ticketKey: selected.key,
-                            priority: value as Priority,
-                          });
+                          if (!packageMode)
+                            void window.AgentGate?.track({
+                              type: "priority_change",
+                              ticketKey: selected.key,
+                              priority: value as Priority,
+                            });
                         }}
                       >
                         <SelectTrigger
@@ -914,7 +1021,8 @@ export function TicketWorkspace({
                       !selected.canEdit ||
                       priority === selected.priority ||
                       accessBlocked ||
-                      visitorBlocked
+                      visitorBlocked ||
+                      packageBlocked
                     }
                     className="min-w-[132px]"
                   >

@@ -4,6 +4,7 @@ export type SessionInfo = {
   runId: string;
   sessionId: string;
   fixtureMode: boolean;
+  packageMode?: "optional" | "required" | null;
 };
 declare global {
   interface Window {
