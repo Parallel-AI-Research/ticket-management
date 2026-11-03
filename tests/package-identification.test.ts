@@ -555,7 +555,7 @@ test("context and receipt secrets never enter audit records or projected evidenc
     collectorSessionId: value.claims.sessionId,
     collectorEventId: value.claims.eventId,
     evidence: "self_reported",
-    sdkVersion: "0.1.0",
+    sdkVersion: "0.5.0",
   });
   const started = snapshot.events.find((event) => event.type === "session_started");
   assert.ok(started && "packageMode" in started.data);
@@ -606,6 +606,15 @@ test("snapshot evidence rejects malformed package declarations instead of droppi
     };
     assert.equal(snapshotSummarySchema.safeParse(changed).success, false);
   }
+  const earlier = {
+    ...report,
+    events: report.events.map((event) =>
+      event.type === "package_declaration_recorded"
+        ? { ...event, data: { ...event.data, sdkVersion: "0.1.0" } }
+        : event,
+    ),
+  };
+  assert.equal(snapshotSummarySchema.safeParse(earlier).success, true);
 });
 
 test("package verifier reports missing receipt without contacting the collector", async () => {
