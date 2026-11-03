@@ -1,6 +1,6 @@
 # Standalone package integration
 
-The ticket app consumes `@parallel-research/agent-identification` **0.1.0** from
+The ticket app consumes `@parallel-research/agent-identification` **0.5.0** from
 the collector's versioned HTTPS tarball. Its URL and integrity are pinned in
 `package-lock.json`. No SDK source is copied into this repository.
 
@@ -75,6 +75,23 @@ The package records visible **self-report**. All three answers satisfy required
 mode; none proves identity or grants account permissions. Online verification
 and the ticket write are separate operations, so they are not an atomic
 transaction with the collector.
+
+## Signed agents
+
+`src/proxy.ts` passes each request that carries a Web Bot Auth signature to the
+collector with `reportSignedRequest()`, using the same site ID and secret. The
+collector checks it and shows the result on the product's **Signed agents**
+card. Unsigned requests, and scripts, styles and images, make no call, and the
+visitor's response never waits for the report.
+
+The proxy runs on the login and ticket pages; the home page redirects to the
+tickets. It reports the host from the request's `Host` header,
+because the agent signs the host it asked for and Next can rewrite the URL's
+host, to `localhost` in development. The collector still rejects any host that
+isn't one of the site's origins.
+
+A verified signature names the agent's operator, never the person or account it
+acts for. It doesn't block, admit or change anything in the app.
 
 ## Verify
 

@@ -1,6 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-export async function proxy(request: NextRequest) {
+import { reportSignedRequest } from "@parallel-research/agent-identification/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+
+/** Web Bot Auth: the collector checks signed requests. Unsigned ones make no call. */
+function reportSignature(request: NextRequest, event: NextFetchEvent) {
+  const apiUrl = process.env.AGENT_ID_API_URL;
+  const siteId = process.env.AGENT_ID_SITE_ID;
+  const secret = process.env.AGENT_ID_SITE_SECRET;
+  if (!apiUrl || !siteId || !secret) return;
+  // Agents sign the host they asked for, but Next can rewrite the URL's host (to localhost in
+  // development). The collector still checks the host against the site's origins.
+  const url = new URL(request.url);
+  const host = request.headers.get("host");
+  if (host) url.host = host;
+  event.waitUntil(reportSignedRequest(request, { apiUrl, siteId, secret, url: url.href }));
+}
+
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  reportSignature(request, event);
   let response = NextResponse.next({ request });
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
     return response;
