@@ -16,28 +16,7 @@ function reportSignature(request: NextRequest, event: NextFetchEvent) {
   event.waitUntil(reportSignedRequest(request, { apiUrl, siteId, secret, url: url.href }));
 }
 
-/**
- * Temporary: shows whether a /login request arrived signed, to check ChatGPT's cloud browser.
- * Logs which signature headers are present, never their values. Remove once that's settled.
- */
-function logLoginSignature(request: NextRequest) {
-  if (request.nextUrl.pathname !== "/login") return;
-  const header = (name: string) => request.headers.get(name)?.slice(0, 200) ?? null;
-  console.info(
-    "Web Bot Auth check",
-    JSON.stringify({
-      method: request.method,
-      userAgent: header("user-agent"),
-      secFetchDest: header("sec-fetch-dest"),
-      signature: request.headers.has("signature"),
-      signatureInput: request.headers.has("signature-input"),
-      signatureAgent: header("signature-agent"),
-    }),
-  );
-}
-
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
-  logLoginSignature(request);
   reportSignature(request, event);
   let response = NextResponse.next({ request });
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
