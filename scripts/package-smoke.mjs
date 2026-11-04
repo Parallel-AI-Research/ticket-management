@@ -51,6 +51,7 @@ async function run() {
     checks: [],
     runs: [],
     collector: [],
+    activity: [],
     acknowledgments: [],
     screenshots: [],
     status: "running",
@@ -67,6 +68,7 @@ async function run() {
   const receiptRequests = [];
   const pageErrors = [];
   let collectorOrigin;
+  let collectorSiteId;
 
   async function writeReport() {
     const path = `${evidence}/results.json`;
@@ -159,12 +161,14 @@ async function run() {
       saveButton().click(),
     ]);
     check(saved.status() === 200, "Browser ticket save was rejected.");
+    const eventId = safeId((await saved.json()).eventId);
     await expect(page.getByText("Changes saved", { exact: true })).toBeVisible();
     const persisted = await api("/api/tickets/northstar");
     check(
       persisted.status === 200 && persisted.data.ticket?.priority === "High",
       "Saved priority was not persisted by the ticket backend.",
     );
+    return eventId;
   }
   async function recorded(label, expectedChoice) {
     const [response] = await Promise.all([
@@ -216,6 +220,44 @@ async function run() {
     );
     await expect(priority()).toBeEnabled();
   }
+  // Reads the collector's private activity export with the site's own secret.
+  async function collectorActivity(params) {
+    const secret = process.env.AGENT_ID_SITE_SECRET;
+    check(collectorOrigin && collectorSiteId, "No real collector configuration was observed.");
+    check(secret, "Collector checks need the site's AGENT_ID_SITE_SECRET.");
+    const url = new URL("/v1/activity", collectorOrigin);
+    for (const [key, value] of Object.entries({
+      siteId: collectorSiteId,
+      limit: "1000",
+      ...params,
+    }))
+      url.searchParams.set(key, value);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${secret}` },
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
+    });
+    check(response.ok, `The collector's activity export answered ${response.status}.`);
+    return (await response.json()).events ?? [];
+  }
+  // The app reports a save after sending its response, so wait for it to arrive.
+  async function reportedAction(id) {
+    check(id, "The ticket save returned no event ID to look for.");
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const action = (await collectorActivity({ type: "action" })).find((event) => event.id === id);
+      if (action) return action;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    throw new SmokeFailure("A ticket save never reached the collector as an action.");
+  }
+  function countActivity(events) {
+    const counts = {};
+    for (const event of events) {
+      const key = event.type === "action" ? `action_${event.outcome}` : event.type;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }
 
   try {
     // Use bundled full Chromium's new headless mode; the macOS headless shell can stall input.
@@ -259,6 +301,7 @@ async function run() {
         const data = await response.json();
         if (path === "/api/package-identification/context") {
           collectorOrigin = new URL(data.apiUrl).origin;
+          collectorSiteId = data.siteId;
           return;
         }
         if (path === "/api/package-identification/receipt") {
@@ -313,13 +356,14 @@ async function run() {
       check(session.status === 200 && safeId(session.data.sessionId), "Research session failed.");
     });
 
+    let optionalSave;
     await scenario("optional: save and reload without declaring", async () => {
       const declarationsBefore = declarationRequests.length;
       const receiptsBefore = receiptRequests.length;
       await startRun("optional");
       await readyWidget();
       await selectHigh();
-      await saveHigh();
+      optionalSave = await saveHigh();
       await page.reload({ waitUntil: "domcontentloaded" });
       await readyWidget();
       await expect(priority()).toHaveText(/High/);
@@ -331,7 +375,27 @@ async function run() {
       await screenshot("optional-saved-without-declaration");
     });
 
+    await scenario(
+      "collector: an unanswered run's page views and save share a session",
+      async () => {
+        const action = await reportedAction(optionalSave);
+        check(
+          action.action === "ticket.priority_update" &&
+            action.outcome === "confirmed" &&
+            action.resourceRef === "northstar" &&
+            action.evidence === "host_reported",
+          "The optional save reached the collector with the wrong details.",
+        );
+        check(safeId(action.sessionId), "The optional save didn't join the widget's session.");
+        const counts = countActivity(await collectorActivity({ sessionId: action.sessionId }));
+        report.activity.push({ run: "optional", counts });
+        check(counts.page_view >= 1, "The optional run's session has no page view.");
+        check(!counts.declaration, "The optional run's session has a declaration it never made.");
+      },
+    );
+
     let accepted;
+    let requiredSaves;
     for (const [label, choice] of [
       ["AI assistant", "ai_assistant"],
       ["Person", "person"],
@@ -353,7 +417,14 @@ async function run() {
         if (choice === "ai_assistant") await screenshot("required-before-declaration");
         accepted = await recorded(label, choice);
         await selectHigh();
-        await saveHigh();
+        const saved = await saveHigh();
+        if (choice === "ai_assistant") {
+          requiredSaves = {
+            rejected: safeId(blocked.data.eventId),
+            confirmed: saved,
+            collectorSessionId: accepted.collectorSessionId,
+          };
+        }
         await screenshot(`required-${choice}-saved`);
       });
       if (choice === "ai_assistant") {
@@ -376,6 +447,29 @@ async function run() {
         );
       }
     }
+
+    await scenario(
+      "collector: a declared run's page views, declaration and saves share a session",
+      async () => {
+        const rejected = await reportedAction(requiredSaves.rejected);
+        const confirmed = await reportedAction(requiredSaves.confirmed);
+        check(
+          rejected.outcome === "rejected" && confirmed.outcome === "confirmed",
+          "The blocked and accepted saves reached the collector with the wrong outcomes.",
+        );
+        check(
+          rejected.sessionId === requiredSaves.collectorSessionId &&
+            confirmed.sessionId === requiredSaves.collectorSessionId,
+          "The saves didn't join the declaration's collector session.",
+        );
+        const counts = countActivity(
+          await collectorActivity({ sessionId: requiredSaves.collectorSessionId }),
+        );
+        report.activity.push({ run: "required", counts });
+        check(counts.page_view >= 1, "The declared run's session has no page view.");
+        check(counts.declaration >= 1, "The declared run's session has no declaration.");
+      },
+    );
 
     await scenario("required: new run isolates prior declaration and ticket state", async () => {
       const old = accepted;
