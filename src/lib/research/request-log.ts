@@ -52,6 +52,7 @@ const resultCodes = new Set([
   "not_found",
   "method_not_allowed",
   "options",
+  "client_closed_request",
   "service_unavailable",
 ]);
 
