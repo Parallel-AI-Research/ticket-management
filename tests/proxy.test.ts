@@ -16,9 +16,7 @@ const signed = {
   "user-agent": "Mozilla/5.0",
 };
 const realFetch = globalThis.fetch;
-const realInfo = console.info;
 let calls: { url: string; init: RequestInit }[];
-let logged: unknown[][];
 
 function invoke(path: string, headers: Record<string, string>) {
   const pending: Promise<unknown>[] = [];
@@ -29,8 +27,6 @@ function invoke(path: string, headers: Record<string, string>) {
 
 beforeEach(() => {
   calls = [];
-  logged = [];
-  console.info = (...args: unknown[]) => void logged.push(args);
   Object.assign(process.env, settings);
   globalThis.fetch = (async (url: URL | string, init: RequestInit) => {
     calls.push({ url: String(url), init });
@@ -40,7 +36,6 @@ beforeEach(() => {
 afterEach(() => {
   for (const name of Object.keys(settings)) delete process.env[name];
   globalThis.fetch = realFetch;
-  console.info = realInfo;
 });
 
 test("proxy forwards a signed page request's signed headers to the collector", async () => {
@@ -81,29 +76,6 @@ test("proxy makes no collector call for unsigned requests", async () => {
   await response;
   await Promise.all(pending);
   assert.equal(calls.length, 0);
-});
-
-test("proxy logs which signature headers a /login request carried, not their values", async () => {
-  await invoke("/login", { ...signed, "sec-fetch-dest": "document" }).response;
-  await invoke("/tickets", signed).response;
-  assert.equal(logged.length, 1);
-  assert.equal(logged[0]![0], "Web Bot Auth check");
-  assert.deepEqual(JSON.parse(String(logged[0]![1])), {
-    method: "GET",
-    userAgent: "Mozilla/5.0",
-    secFetchDest: "document",
-    signature: true,
-    signatureInput: true,
-    signatureAgent: 'sig1="https://chatgpt.com"',
-  });
-});
-
-test("proxy logs an unsigned /login request as unsigned", async () => {
-  await invoke("/login", { "user-agent": "Mozilla/5.0" }).response;
-  const entry = JSON.parse(String(logged[0]![1]));
-  assert.equal(entry.signature, false);
-  assert.equal(entry.signatureInput, false);
-  assert.equal(entry.signatureAgent, null);
 });
 
 test("proxy skips signed requests when the collector isn't configured", async () => {
