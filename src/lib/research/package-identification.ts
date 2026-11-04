@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import {
   createBindingContext,
+  reportAction,
   verifyDeclaration,
   verifyDeclarationOnline,
 } from "@parallel-research/agent-identification/server";
@@ -65,6 +66,30 @@ export function packageSessionBinding(session: ResearchSession, mode: PackageMod
       JSON.stringify(["ticket-package-v1", session.id, session.runId, session.authSessionId, mode]),
     )
     .digest("hex");
+}
+
+/**
+ * Reports a package run's ticket save to the collector. It uses the session binding from the
+ * widget's binding context, so the collector joins the save to that visitor's session.
+ */
+export function reportPackageSave(
+  session: ResearchSession,
+  mode: PackageMode,
+  save: { id: string; ticketKey: string; status: number },
+  fetchImplementation?: typeof fetch,
+) {
+  const { siteId, secret, apiUrl } = packageSettings();
+  return reportAction(
+    {
+      // The save's own audit event ID, so a retried report is recorded once.
+      id: save.id,
+      action: "ticket.priority_update",
+      outcome: save.status === 200 ? "confirmed" : "rejected",
+      ...(/^[a-z0-9-]{1,64}$/.test(save.ticketKey) ? { resourceRef: save.ticketKey } : {}),
+      sessionBinding: packageSessionBinding(session, mode),
+    },
+    { apiUrl, siteId, secret, fetch: fetchImplementation },
+  );
 }
 
 function sameSession(current: ResearchSession, expected: ResearchSession, now: Date) {

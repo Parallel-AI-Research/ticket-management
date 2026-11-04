@@ -76,6 +76,21 @@ mode; none proves identity or grants account permissions. Online verification
 and the ticket write are separate operations, so they are not an atomic
 transaction with the collector.
 
+## Activity
+
+The package widget records a page view each time a package workspace page
+loads, once its collector session is ready, whether or not the visitor answers.
+
+Each save in a package run is also reported to the collector as a
+`ticket.priority_update` action with `reportAction()`, after the response is
+sent. A save that succeeds is `confirmed`. One the app refuses, such as a
+required run without a receipt or a Meridian write, is `rejected`. The report
+reuses the save's audit event ID, so a retried report is recorded once, and
+names the ticket key as `resourceRef`. It joins the visitor's collector session
+through the same session binding as the widget's binding context. The research
+session, run and login IDs never leave the app. Legacy and baseline runs report
+nothing.
+
 ## Signed agents
 
 `src/proxy.ts` passes each request that carries a Web Bot Auth signature to the
@@ -109,8 +124,13 @@ app origin. A local fixture needs no login. Hosted checks need dedicated
 `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` values supplied privately; the smoke
 check creates fresh synthetic runs and signs out afterward.
 
+The smoke check also reads the collector's activity export to confirm that an
+unanswered optional run and a declared required run each keep their page views,
+declaration and saves in one collector session. It needs the app's own
+`AGENT_ID_SITE_SECRET` in its environment.
+
 ```sh
-TEST_BASE_URL=http://127.0.0.1:4311 npm run test:package
+AGENT_ID_SITE_SECRET=... TEST_BASE_URL=http://127.0.0.1:4311 npm run test:package
 ```
 
 For a local collector, register the same exact local app origin and configure

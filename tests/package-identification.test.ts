@@ -15,6 +15,7 @@ import {
   packageSessionBinding,
   packageSettings,
   recordPackageReceipt,
+  reportPackageSave,
   type PackageMode,
 } from "../src/lib/research/package-identification";
 import { snapshotSummarySchema } from "../scripts/lib/evidence-snapshot";
@@ -193,6 +194,79 @@ test("contexts are bound to the server session and persisted mode without changi
   const legacy = (await start(null)).session;
   assert.equal(await packageMode(db, legacy), null);
   assert.equal((await issuePackageContext(db, legacy, "required")).status, 409);
+});
+
+test("package saves are reported as actions joined by the widget's session binding", async () => {
+  const { session } = await start("required");
+  const calls: {
+    url: string;
+    init?: RequestInit;
+    body: { siteId: string; actions: Record<string, unknown>[] };
+  }[] = [];
+  const fetchImplementation: typeof fetch = async (input, init) => {
+    const body = JSON.parse(String(init?.body));
+    calls.push({ url: String(input), init, body });
+    return Response.json({
+      results: body.actions.map((action: { id: string }) => ({
+        id: action.id,
+        status: "recorded",
+        sessionId: null,
+      })),
+    });
+  };
+  const saved = { id: randomUUID(), ticketKey: "northstar", status: 200 };
+  const denied = { id: randomUUID(), ticketKey: "meridian", status: 403 };
+  const unknown = { id: randomUUID(), ticketKey: "../northstar", status: 404 };
+  for (const save of [saved, denied, unknown]) {
+    const report = await reportPackageSave(session, "required", save, fetchImplementation);
+    assert.deepEqual(report, {
+      status: "recorded",
+      id: save.id,
+      sessionId: null,
+      duplicate: false,
+    });
+  }
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].url, `${settings.apiUrl}/v1/actions`);
+  assert.equal(
+    new Headers(calls[0].init?.headers).get("authorization"),
+    `Bearer ${settings.secret}`,
+  );
+  const binding = packageSessionBinding(session, "required");
+  const actions = calls.map((call) => {
+    assert.equal(call.body.siteId, settings.siteId);
+    const { occurredAt, ...action } = call.body.actions[0];
+    assert.ok(Date.parse(String(occurredAt)));
+    return action;
+  });
+  assert.deepEqual(actions, [
+    {
+      id: saved.id,
+      action: "ticket.priority_update",
+      outcome: "confirmed",
+      resourceRef: "northstar",
+      sessionBinding: binding,
+    },
+    {
+      id: denied.id,
+      action: "ticket.priority_update",
+      outcome: "rejected",
+      resourceRef: "meridian",
+      sessionBinding: binding,
+    },
+    // A key that isn't an opaque ID is left out rather than sent.
+    {
+      id: unknown.id,
+      action: "ticket.priority_update",
+      outcome: "rejected",
+      sessionBinding: binding,
+    },
+  ]);
+  // Only the derived binding leaves the app, never the research or login session IDs.
+  const sent = JSON.stringify(calls.map((call) => call.body));
+  for (const value of [session.id, session.runId, session.authSessionId, session.principalId]) {
+    assert.equal(sent.includes(value), false);
+  }
 });
 
 test("required runs reject a direct save without a receipt regardless of legacy signal or registration", async () => {
