@@ -60,7 +60,8 @@ const packageDeclarationEvent = snapshotEvent.extend({
     collectorSessionId: z.uuid(),
     collectorEventId: z.uuid(),
     evidence: z.literal("self_reported"),
-    sdkVersion: z.literal("0.1.0"),
+    // Runs before the 0.5.0 upgrade recorded 0.1.0.
+    sdkVersion: z.enum(["0.1.0", "0.5.0"]),
   }),
 });
 const sessionStartedEvent = snapshotEvent.extend({

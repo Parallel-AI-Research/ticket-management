@@ -198,7 +198,7 @@ export async function recordPackageReceipt(
           collectorSessionId: claims.sessionId,
           collectorEventId: claims.eventId,
           evidence: "self_reported",
-          sdkVersion: "0.1.0",
+          sdkVersion: "0.5.0",
         },
       });
     }
