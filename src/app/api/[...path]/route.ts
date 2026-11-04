@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { and, eq, sql } from "drizzle-orm";
@@ -20,6 +20,7 @@ import {
   packageMode,
   packageSettings,
   recordPackageReceipt,
+  reportPackageSave,
 } from "@/lib/research/package-identification";
 import * as research from "@/lib/research/service";
 export const runtime = "nodejs";
@@ -261,6 +262,12 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
         undefined,
         { receipt: parsed.success ? parsed.data.declarationReceipt : undefined },
       );
+      // Package runs also report the save to the collector, after the response is sent.
+      if ("eventId" in result && result.eventId) {
+        const mode = await packageMode(c.db, c.session);
+        const save = { id: result.eventId, ticketKey: path.split("/")[1], status: result.status };
+        if (mode) after(() => reportPackageSave(c.session, mode, save));
+      }
       return json(result, result.status);
     }
     if (method === "POST" && path === "runs") {
