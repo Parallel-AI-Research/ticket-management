@@ -222,6 +222,21 @@ test("arbitrary result codes cannot leak handler data", async () => {
   assert.equal(JSON.stringify(records).includes("private-nonce"), false);
 });
 
+test("a request the browser cancelled completes as closed, not as a service failure", async () => {
+  const { records, write } = capture();
+  await withAgentRequestLog(
+    new Request("https://example.test/api/package-identification/context", { method: "POST" }),
+    (setResult) => {
+      setResult("client_closed_request");
+      return new Response(null, { status: 499 });
+    },
+    write,
+  );
+  assert.equal(records.length, 2);
+  assert.equal(records[1].resultCode, "client_closed_request");
+  assert.equal(records[1].status, 499);
+});
+
 test("unexpected handler failure pairs entry and completion without exposing the error", async () => {
   const { records, write } = capture();
   const failure = new Error("private-connection-string");

@@ -465,6 +465,11 @@ async function route(request: NextRequest, params: Params, setResult: SetRequest
       setResult(error.code);
       return json({ code: error.code }, error.status);
     }
+    // The browser cancelled the request, for example by leaving the page, so nothing failed here.
+    if (request.signal.aborted) {
+      setResult("client_closed_request");
+      return new Response(null, { status: 499 });
+    }
     // Never return connection strings, raw SQL, auth tokens, or declarations in errors.
     console.error("Request failed", error instanceof Error ? error.name : "UnknownError");
     setResult("service_unavailable");
