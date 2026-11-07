@@ -151,13 +151,33 @@ async function operator(request: Request) {
   )
     throw new HttpError(403, "operator_access_required");
 }
+async function databaseStatus(): Promise<"ok" | "unavailable"> {
+  try {
+    await (await getDb()).execute(sql`select 1 from research.runs limit 1`);
+    return "ok";
+  } catch {
+    return "unavailable";
+  }
+}
 type Params = { params: Promise<{ path: string[] }> };
 async function route(request: NextRequest, params: Params, setResult: SetRequestLogResult) {
   try {
     const path = (await params.params).path.join("/"),
       method = request.method;
-    if (method === "GET" && path === "health")
-      return json({ ok: true, configured: configured(), fixtureMode: isFixtureMode() });
+    if (method === "GET" && path === "health") {
+      // Vercel calls this daily (vercel.json), and this read keeps the free Supabase project from
+      // being paused after a week without database activity.
+      const database = configured() || isFixtureMode() ? await databaseStatus() : "not_configured";
+      return json(
+        {
+          ok: database !== "unavailable",
+          configured: configured(),
+          fixtureMode: isFixtureMode(),
+          database,
+        },
+        database === "unavailable" ? 503 : 200,
+      );
+    }
     if (method === "GET" && path === "agent-policy") {
       setResult("policy_served");
       return json(agentPolicy);
