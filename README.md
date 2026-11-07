@@ -81,6 +81,10 @@ supabase db push --linked
 
 Do not replay already-applied SQL by hand: role and policy creation are tracked migrations. `npm run db:migrate` is the older schema-only bootstrap; it does not provision the restricted role and is not the hosted migration workflow. Ticket fixtures are created per run, so `supabase/config.toml` disables seeding and does not reference a nonexistent `seed.sql`.
 
+### Keeping the Supabase project active
+
+Supabase pauses a free project after a week without enough database activity. Vercel calls `/api/health` once a day (`crons` in `vercel.json`), and it reads one row from `research.runs`, so the hosted project stays active. It answers `database: "ok"`, or 503 with `database: "unavailable"` when the database can't be reached. Upgrading the project to a paid plan also stops pausing.
+
 ### Auth configuration and config push
 
 `supabase/config.toml` records the intended project settings; editing it does not update the cloud project. Set global signup and anonymous sign-in **off**, keep the email/password provider **on**, require a minimum password length of **12**, and enable email confirmation, secure password changes, and confirmation on both addresses for email changes. Existing accounts should be manually confirmed when provisioned. [Auth configuration reference](https://supabase.com/docs/guides/local-development/cli/config)
