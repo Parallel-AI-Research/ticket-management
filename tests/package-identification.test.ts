@@ -629,7 +629,7 @@ test("context and receipt secrets never enter audit records or projected evidenc
     collectorSessionId: value.claims.sessionId,
     collectorEventId: value.claims.eventId,
     evidence: "self_reported",
-    sdkVersion: "0.5.0",
+    sdkVersion: "0.8.2",
   });
   const started = snapshot.events.find((event) => event.type === "session_started");
   assert.ok(started && "packageMode" in started.data);

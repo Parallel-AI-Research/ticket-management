@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AgentIdentification } from "@parallel-research/agent-identification/react";
-import type { RecordedDeclaration } from "@parallel-research/agent-identification";
+import { AgentIdentification } from "@useparallel/agent-identification/react";
+import type { RecordedDeclaration } from "@useparallel/agent-identification";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 

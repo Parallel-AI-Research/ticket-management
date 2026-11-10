@@ -5,7 +5,7 @@ import {
   reportAction,
   verifyDeclaration,
   verifyDeclarationOnline,
-} from "@parallel-research/agent-identification/server";
+} from "@useparallel/agent-identification/server";
 import type { Database } from "../db";
 import { events, sessions, type ResearchSession } from "../db/schema";
 
@@ -223,7 +223,7 @@ export async function recordPackageReceipt(
           collectorSessionId: claims.sessionId,
           collectorEventId: claims.eventId,
           evidence: "self_reported",
-          sdkVersion: "0.5.0",
+          sdkVersion: "0.8.2",
         },
       });
     }

@@ -22,9 +22,9 @@
     "evidence": "node --import tsx scripts/evidence.ts"
   },
   "dependencies": {
-    "@parallel-research/agent-identification": "https://parallel-agent-identification.vercel.app/downloads/parallel-research-agent-identification-0.5.0.tgz",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.117.2",
+    "@useparallel/agent-identification": "0.8.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cn": "^0.4.0",
