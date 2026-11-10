@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { reportSignedRequest } from "@parallel-research/agent-identification/server";
+import { reportSignedRequest } from "@useparallel/agent-identification/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 /** Web Bot Auth: the collector checks signed requests. Unsigned ones make no call. */

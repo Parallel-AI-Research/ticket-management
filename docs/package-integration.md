@@ -1,8 +1,9 @@
 # Standalone package integration
 
-The ticket app consumes `@parallel-research/agent-identification` **0.5.0** from
-the collector's versioned HTTPS tarball. Its URL and integrity are pinned in
-`package-lock.json`. No SDK source is copied into this repository.
+The ticket app consumes `@useparallel/agent-identification` **0.8.2** from npm,
+pinned to that exact version, with its integrity recorded in `package-lock.json`.
+Versions up to 0.5.0 came from the collector's download URLs, which no longer exist.
+No SDK source is copied into this repository.
 
 ## Try it
 
